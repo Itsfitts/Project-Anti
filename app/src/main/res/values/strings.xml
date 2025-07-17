@@ -19,6 +19,9 @@
     <string name="overlay_detector">Overlay Detector</string>
     <string name="hidden_app_finder">Hidden App Finder</string>
     <string name="camera_mic_detector">Camera/Mic Detector</string>
+    <string name="shizuku_operations">Shizuku Operations</string>
+    <string name="package_manager">Package Manager</string>
+    <string name="system_properties">System Properties</string>
 
     <!-- Messages -->
     <string name="permission_denied">Root access required for this feature</string>

