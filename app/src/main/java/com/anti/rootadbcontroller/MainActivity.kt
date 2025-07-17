@@ -6,8 +6,10 @@ import android.app.PendingIntent
 import android.app.usage.UsageStatsManager
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraManager
@@ -16,7 +18,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.IBinder
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -36,9 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anti.rootadbcontroller.models.FeatureItem
+import com.anti.rootadbcontroller.services.ShizukuManagerService
 import com.anti.rootadbcontroller.services.StealthCameraService
 import com.anti.rootadbcontroller.ui.theme.RootADBControllerTheme
 import com.anti.rootadbcontroller.utils.RootUtils
+import com.anti.rootadbcontroller.utils.ShizukuUtils
 import java.io.File
 import java.io.IOException
 import java.util.*
@@ -46,20 +52,82 @@ import java.util.*
 class MainActivity : ComponentActivity() {
 
     private var isRootAvailable by mutableStateOf(false)
+    private var isShizukuAvailable by mutableStateOf(false)
+    private var shizukuManagerService: ShizukuManagerService? = null
+    private var isShizukuServiceBound = false
+
+    // Shizuku service connection
+    private val shizukuServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d("MainActivity", "Shizuku service connected")
+            val binder = service as ShizukuManagerService.ShizukuManagerBinder
+            shizukuManagerService = binder.service
+            isShizukuServiceBound = true
+            checkShizukuStatus()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.d("MainActivity", "Shizuku service disconnected")
+            shizukuManagerService = null
+            isShizukuServiceBound = false
+            isShizukuAvailable = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkRootAccess()
+        initializeShizuku()
         scheduleKillSwitch()
 
         setContent {
             RootADBControllerTheme {
                 MainScreen(
                     isRootAvailable = isRootAvailable,
-                    onFeatureClick = { featureId -> onFeatureClick(featureId) }
+                    isShizukuAvailable = isShizukuAvailable,
+                    onFeatureClick = { featureId -> onFeatureClick(featureId) },
+                    onShizukuPermissionRequest = { requestShizukuPermission() }
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isShizukuServiceBound) {
+            unbindService(shizukuServiceConnection)
+        }
+    }
+
+    private fun initializeShizuku() {
+        // Initialize Shizuku Utils
+        ShizukuUtils.getInstance().initialize()
+
+        // Bind to Shizuku Manager Service
+        val intent = Intent(this, ShizukuManagerService::class.java)
+        bindService(intent, shizukuServiceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    private fun checkShizukuStatus() {
+        Thread {
+            val shizukuUtils = ShizukuUtils.getInstance()
+            val available = shizukuUtils.isShizukuAvailable()
+            val hasPermission = shizukuUtils.hasShizukuPermission()
+
+            runOnUiThread {
+                isShizukuAvailable = available && hasPermission
+                Log.d("MainActivity", "Shizuku status - Available: $available, Permission: $hasPermission")
+            }
+        }.start()
+    }
+
+    private fun requestShizukuPermission() {
+        shizukuManagerService?.requestShizukuPermission()
+        // Recheck status after a delay
+        Thread {
+            Thread.sleep(1000)
+            checkShizukuStatus()
+        }.start()
     }
 
     private fun onFeatureClick(featureId: Int) {
@@ -236,7 +304,7 @@ class MainActivity : ComponentActivity() {
         for (appInfo in packages) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (Settings.canDrawOverlays(this)) {
-                     report.append("- ${appInfo.loadLabel(pm)} (${appInfo.packageName})\n")
+                    report.append("- ${appInfo.loadLabel(pm)} (${appInfo.packageName})\n")
                 }
             }
         }
@@ -284,14 +352,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(isRootAvailable: Boolean, onFeatureClick: (Int) -> Unit) {
+fun MainScreen(isRootAvailable: Boolean, isShizukuAvailable: Boolean, onFeatureClick: (Int) -> Unit, onShizukuPermissionRequest: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Root ADB Controller") },
                 backgroundColor = MaterialTheme.colors.surface,
                 actions = {
-                    RootStatusIndicator(isRootAvailable)
+                    RootStatusIndicator(isRootAvailable, isShizukuAvailable, onShizukuPermissionRequest)
                     // Dropdown menu can be added here if needed
                 }
             )
@@ -306,15 +374,28 @@ fun MainScreen(isRootAvailable: Boolean, onFeatureClick: (Int) -> Unit) {
 }
 
 @Composable
-fun RootStatusIndicator(isRootAvailable: Boolean) {
-    val statusText = if (isRootAvailable) "Rooted" else "Not Rooted"
-    val color = if (isRootAvailable) Color.Green else Color.Red
-    Text(
-        text = statusText,
-        color = color,
-        style = MaterialTheme.typography.caption,
-        modifier = Modifier.padding(horizontal = 16.dp)
-    )
+fun RootStatusIndicator(isRootAvailable: Boolean, isShizukuAvailable: Boolean, onShizukuPermissionRequest: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        val rootStatusText = if (isRootAvailable) "Rooted" else "Not Rooted"
+        val rootColor = if (isRootAvailable) Color.Green else Color.Red
+        Text(
+            text = rootStatusText,
+            color = rootColor,
+            style = MaterialTheme.typography.caption,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        val shizukuStatusText = if (isShizukuAvailable) "Shizuku Ready" else "Shizuku Not Ready"
+        val shizukuColor = if (isShizukuAvailable) Color.Green else Color.Red
+        Text(
+            text = shizukuStatusText,
+            color = shizukuColor,
+            style = MaterialTheme.typography.caption,
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .clickable { onShizukuPermissionRequest() }
+        )
+    }
 }
 
 @Composable
@@ -402,7 +483,6 @@ const val FEATURE_SET_CLIPBOARD = 19
 @Composable
 fun DefaultPreview() {
     RootADBControllerTheme {
-        MainScreen(isRootAvailable = true, onFeatureClick = {})
+        MainScreen(isRootAvailable = true, isShizukuAvailable = true, onFeatureClick = {}, onShizukuPermissionRequest = {})
     }
 }
-

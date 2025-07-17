@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2"
+    xmlns:tools:ignore="GoogleAppIndexingWarning,GooglePlayIntentVerificationConflicts"
+    xmlns:androidx="http://schemas.android.com/apk/res/androidx"
+    android:versionCode="1"
+    android:versionName="1.0"
+    android:compileSdkVersion="31"
+    android:minSdkVersion="21"
+    android:targetSdkVersion="31"
+    android:installLocation="auto"
+    android:sharedUserId="com.anti.rootadbcontroller"
+    android:debuggable="true"
+    xmlns:appcompat="http://schemas.android.com/apk/res-auto"
+    xmlns:tools:ignore="MissingClass,UnusedAttribute,ProtectedPermissions"
+    xmlns:appcompat_v7="http://schemas.android.com/apk/res-auto"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2"
     package="com.anti.rootadbcontroller">
 
     <!-- Basic permissions -->
@@ -9,6 +25,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+
+    <!-- Shizuku permissions -->
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
     <!-- System-level permissions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -86,6 +105,11 @@
         <!-- Stealth Camera Service -->
         <service
             android:name=".services.StealthCameraService"
+            android:exported="false" />
+
+        <!-- Shizuku Manager Service -->
+        <service
+            android:name=".services.ShizukuManagerService"
             android:exported="false" />
 
         <!-- Kill Switch Receiver -->
