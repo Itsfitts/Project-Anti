@@ -8,6 +8,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.anti.rootadbcontroller.utils.ShizukuUtils;
+import com.anti.rootadbcontroller.services.ShizukuCallbacks.*;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -205,65 +206,62 @@ public class ShizukuManagerService extends Service {
                         success = cmdResult.isSuccess();
                         result = cmdResult.output;
                         break;
+
+                    case SET_SYSTEM_PROPERTY:
+                        success = shizukuUtils.setSystemProperty(operation.property, operation.value);
+                        result = success ? "Property set: " + operation.property + "=" + operation.value : "Failed to set property";
+                        break;
+
+                    case GET_SYSTEM_PROPERTY:
+                        String propValue = shizukuUtils.getSystemProperty(operation.property);
+                        success = propValue != null;
+                        result = success ? propValue : "Failed to get property";
+                        break;
                 }
 
                 if (callback != null) {
-                    callback.onSystemOperationResult(success, operation, result);
+                    callback.onSystemOperationResult(success, operation.type.name(), result);
                 }
             });
         }
     }
 
-    // Callback interfaces
-    public interface CommandCallback {
-        void onResult(ShizukuUtils.CommandResult result);
-    }
-
-    public interface InstallCallback {
-        void onInstallResult(boolean success, String apkPath);
-    }
-
-    public interface UninstallCallback {
-        void onUninstallResult(boolean success, String packageName);
-    }
-
-    public interface PermissionCallback {
-        void onPermissionResult(boolean success, String packageName, String permission, boolean granted);
-    }
-
-    public interface ComponentCallback {
-        void onComponentResult(boolean success, String packageName, String componentName, boolean enabled);
-    }
-
-    public interface SystemOperationCallback {
-        void onSystemOperationResult(boolean success, SystemOperation operation, String result);
-    }
-
-    // System operation types
-    public static class SystemOperation {
-        public enum Type {
-            DISABLE_PACKAGE,
-            ENABLE_PACKAGE,
-            CLEAR_APP_DATA,
-            FORCE_STOP_APP,
-            GET_APP_INFO,
-            CUSTOM_COMMAND
+    /**
+     * Get list of installed packages
+     */
+    public void getInstalledPackagesAsync(CommandCallback callback) {
+        if (executor != null) {
+            executor.execute(() -> {
+                ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult("pm list packages");
+                if (callback != null) {
+                    callback.onResult(result);
+                }
+            });
         }
+    }
 
-        public final Type type;
-        public final String packageName;
-        public final String customCommand;
+    /**
+     * Get device information
+     */
+    public void getDeviceInfoAsync(CommandCallback callback) {
+        if (executor != null) {
+            executor.execute(() -> {
+                StringBuilder deviceInfo = new StringBuilder();
 
-        public SystemOperation(Type type, String packageName) {
-            this.type = type;
-            this.packageName = packageName;
-            this.customCommand = null;
-        }
+                String model = shizukuUtils.getSystemProperty("ro.product.model");
+                String manufacturer = shizukuUtils.getSystemProperty("ro.product.manufacturer");
+                String version = shizukuUtils.getSystemProperty("ro.build.version.release");
+                String buildId = shizukuUtils.getSystemProperty("ro.build.id");
 
-        public SystemOperation(String customCommand) {
-            this.type = Type.CUSTOM_COMMAND;
-            this.packageName = null;
-            this.customCommand = customCommand;
+                deviceInfo.append("Device: ").append(manufacturer).append(" ").append(model).append("\n");
+                deviceInfo.append("Android Version: ").append(version).append("\n");
+                deviceInfo.append("Build ID: ").append(buildId).append("\n");
+
+                ShizukuUtils.CommandResult result = new ShizukuUtils.CommandResult(0, deviceInfo.toString(), "");
+                if (callback != null) {
+                    callback.onResult(result);
+                }
+            });
         }
     }
 }
