@@ -189,6 +189,12 @@ android {
             versionNameSuffix "-test"
             debuggable true
         }
+        test {
+            initWith release
+            applicationIdSuffix ".test"
+            versionNameSuffix "-test"
+            debuggable true
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
