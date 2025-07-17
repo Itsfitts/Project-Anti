@@ -1,0 +1,51 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Android Lint
+        run: ./gradlew lintDebug
+
+      - name: Upload Lint Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results-debug.html
+
+  ktlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Run KtLint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/0.48.2/ktlint
+          chmod +x ktlint
+          ./ktlint --android "app/src/**/*.kt" --reporter=plain

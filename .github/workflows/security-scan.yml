@@ -1,0 +1,122 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1' # Run weekly at 2am on Monday
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Project-Anti'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          args: >
+            --enableExperimental
+            --scan **/*.gradle
+            --scan **/*.gradle.kts
+            --scan app/libs
+
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: reports
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=tokenblkguy_Project-Anti
+            -Dsonar.organization=tokenblkguy-github
+            -Dsonar.sources=app/src/main
+
+      - name: Android Lints Security Check
+        run: |
+          ./gradlew lintDebug
+
+      - name: Upload Lint Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results-debug.html
+
+      - name: Check for Hardcoded Secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for Permissions Issues
+        run: |
+          mkdir -p security-reports
+          
+          # Check for excessive permissions in AndroidManifest.xml
+          echo "# Permission Analysis" > security-reports/permissions.md
+          echo "## Permissions Requested in Manifest:" >> security-reports/permissions.md
+          grep -r "uses-permission" app/src/main/AndroidManifest.xml | sort | uniq >> security-reports/permissions.md
+          
+          # Count dangerous permissions
+          echo "## Dangerous Permissions Count:" >> security-reports/permissions.md
+          grep -r "android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.ACCESS_FINE_LOCATION\|android.permission.READ_CONTACTS\|android.permission.READ_CALENDAR\|android.permission.READ_EXTERNAL_STORAGE\|android.permission.WRITE_EXTERNAL_STORAGE\|android.permission.READ_CALL_LOG\|android.permission.READ_SMS" app/src/main/AndroidManifest.xml | wc -l >> security-reports/permissions.md
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: security-reports
+
+      - name: Comment on PR with Security Issues
+        if: github.event_name == 'pull_request' && (steps.gitleaks.outcome == 'failure' || steps.dependency-check.outcome == 'failure')
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            let securityIssues = "# ⚠️ Security Issues Detected\n\n";
+            
+            if (fs.existsSync('reports/dependency-check-report.html')) {
+              securityIssues += "- Dependency vulnerabilities found. Please check the uploaded artifacts for details.\n";
+            }
+            
+            if (fs.existsSync('security-reports/permissions.md')) {
+              const permissions = fs.readFileSync('security-reports/permissions.md', 'utf8');
+              securityIssues += "\n## Permissions Analysis\n" + permissions;
+            }
+            
+            securityIssues += "\nPlease review these security concerns before merging.";
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: securityIssues
+            })
+
+      - name: Fail if secrets found
+        if: steps.gitleaks.outcome == 'failure'
+        run: |
+          echo "::error::Secrets found in code! Please check the Gitleaks report."
+          exit 1

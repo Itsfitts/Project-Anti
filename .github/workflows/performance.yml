@@ -1,0 +1,158 @@
+name: Performance Monitoring
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  apk-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: APK Size Analysis
+        id: apk-size
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          APK_SIZE=$(stat -c%s "$APK_PATH")
+          APK_SIZE_MB=$(echo "scale=2; $APK_SIZE/1048576" | bc)
+          echo "APK Size: $APK_SIZE_MB MB"
+          echo "::set-output name=apk_size::$APK_SIZE"
+          echo "::set-output name=apk_size_mb::$APK_SIZE_MB"
+          echo "::set-output name=apk_path::$APK_PATH"
+
+      - name: Analyze APK with APKAnalyzer
+        run: |
+          mkdir -p apk-analysis
+          
+          # Download APK Analyzer
+          wget -q https://github.com/google/android-classyshark/releases/download/8.2/ClassyShark.jar -O classyshark.jar
+          
+          # Analyze DEX files
+          java -jar classyshark.jar -export "${{ steps.apk-size.outputs.apk_path }}" apk-analysis
+          
+          # Create summary report
+          echo "# APK Analysis Report" > apk-analysis/summary.md
+          echo "APK Size: ${{ steps.apk-size.outputs.apk_size_mb }} MB" >> apk-analysis/summary.md
+          echo "" >> apk-analysis/summary.md
+          echo "## Top 10 Largest Files" >> apk-analysis/summary.md
+          unzip -l "${{ steps.apk-size.outputs.apk_path }}" | sort -nr -k1 | head -n 10 >> apk-analysis/summary.md
+          
+          echo "" >> apk-analysis/summary.md
+          echo "## Methods Count" >> apk-analysis/summary.md
+          cat apk-analysis/*.txt | grep "methods:" >> apk-analysis/summary.md
+
+      - name: Upload APK Analysis
+        uses: actions/upload-artifact@v3
+        with:
+          name: apk-analysis
+          path: apk-analysis/
+
+      - name: Comment APK Size on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('apk-analysis/summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            })
+
+  performance-tests:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run performance tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: |
+            # Install the app
+            ./gradlew installDebug
+            
+            # Run startup time measurement
+            adb shell am start-activity -W -n com.anti.rootadbcontroller/.MainActivity
+            
+            # Measure memory usage
+            sleep 5
+            adb shell dumpsys meminfo com.anti.rootadbcontroller > memory_usage.txt
+            
+            # Measure frame rate (requires app to be running)
+            adb shell dumpsys gfxinfo com.anti.rootadbcontroller > frame_stats.txt
+            
+            # Battery usage measurement
+            adb shell dumpsys batterystats --charged com.anti.rootadbcontroller > battery_stats.txt
+
+      - name: Generate performance report
+        run: |
+          mkdir -p performance-report
+          echo "# Performance Test Results" > performance-report/summary.md
+          
+          echo "## Memory Usage" >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+          grep -A 15 "App Summary" memory_usage.txt >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+          
+          echo "## Frame Stats" >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+          grep -A 20 "Janky frames" frame_stats.txt >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+          
+          echo "## Battery Usage" >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+          grep -A 10 "Estimated power use" battery_stats.txt >> performance-report/summary.md
+          echo '```' >> performance-report/summary.md
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance-report/
+
+      - name: Comment performance results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('performance-report/summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            })

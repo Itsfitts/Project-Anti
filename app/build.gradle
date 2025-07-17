@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jlleitschuh.gradle.ktlint' version '11.3.2'
 }
 
 android {
@@ -26,6 +27,12 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        test {
+            initWith release
+            applicationIdSuffix ".test"
+            versionNameSuffix "-test"
+            debuggable true
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -42,6 +49,23 @@ android {
         includeInApk true
     }
     buildToolsVersion '34.0.0'
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds true
+        checkAllWarnings true
+        warningsAsErrors false
+        ignoreWarnings false
+        quiet false
+        showAll true
+        explainIssues true
+        checkDependencies true
+        disable 'InvalidPackage', 'GradleDependency', 'OldTargetApi'
+        htmlReport true
+        xmlReport true
+        htmlOutput file("${project.buildDir}/reports/lint-results.html")
+        xmlOutput file("${project.buildDir}/reports/lint-results.xml")
+    }
 }
 
 dependencies {
@@ -50,7 +74,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.cardview:cardview:1.0.0'
-    
+
     // Kotlin standard library
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.2.0'
 
@@ -59,11 +83,11 @@ dependencies {
     implementation 'dev.rikka.shizuku:provider:13.1.5'
 
     // For root operations
-    implementation 'eu.chainfire:libsuperuser:1.1.0.+'
-    
+    implementation 'eu.chainfire:libsuperuser:1.1.1'
+
     // For JSON operations
     implementation 'com.google.code.gson:gson:2.10.1'
-    
+
     // Compose BOM and dependencies
     implementation platform('androidx.compose:compose-bom:2024.02.00')
     implementation 'androidx.compose.ui:ui'
