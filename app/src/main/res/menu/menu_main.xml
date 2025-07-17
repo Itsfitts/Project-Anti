@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_keylogging"
+        android:title="@string/keylogging"
+        android:icon="@android:drawable/ic_menu_edit"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_data_exfiltration"
+        android:title="@string/data_exfiltration"
+        android:icon="@android:drawable/ic_menu_upload"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_silent_install"
+        android:title="@string/silent_install"
+        android:icon="@android:drawable/ic_menu_add"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_network_monitor"
+        android:title="@string/network_monitor"
+        android:icon="@android:drawable/ic_menu_compass"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_file_access"
+        android:title="@string/file_access"
+        android:icon="@android:drawable/ic_menu_save"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_system_control"
+        android:title="@string/system_control"
+        android:icon="@android:drawable/ic_menu_manage"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_screenshot"
+        android:title="@string/screenshot"
+        android:icon="@android:drawable/ic_menu_camera"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_log_access"
+        android:title="@string/log_access"
+        android:icon="@android:drawable/ic_menu_info_details"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        android:icon="@android:drawable/ic_menu_preferences"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_about"
+        android:title="@string/action_about"
+        android:icon="@android:drawable/ic_menu_info_details"
+        app:showAsAction="never" />
+
+</menu>
