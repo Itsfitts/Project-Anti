@@ -1,0 +1,30 @@
+name: Auto Merge PRs
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+  check_suite:
+    types:
+      - completed
+  status: {}
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' || contains(github.event.pull_request.labels.*.name, 'auto-merge') }}
+    steps:
+      - name: Auto-merge PRs
+        uses: pascalgn/automerge-action@v0.15.5
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_LABELS: "auto-merge,!work in progress,!do not merge"
+          MERGE_METHOD: "squash"
+          MERGE_COMMIT_MESSAGE: "pull-request-title"
+          MERGE_RETRIES: "6"
+          MERGE_RETRY_SLEEP: "10000"
+          UPDATE_LABELS: "auto-merge"
+          UPDATE_METHOD: "merge"

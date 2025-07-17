@@ -1,0 +1,89 @@
+name: Self-Updating Workflows
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday at midnight
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update-workflows:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm install -g @octokit/rest yaml
+
+      - name: Check and update workflows
+        id: check-updates
+        run: |
+          # Define the current versions of actions used
+          CHECKOUT_VERSION="v3"
+          SETUP_JAVA_VERSION="v3"
+          UPLOAD_ARTIFACT_VERSION="v3"
+          NODE_VERSION="v3"
+          
+          # Check for newer versions
+          LATEST_CHECKOUT=$(curl -s https://api.github.com/repos/actions/checkout/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+          LATEST_SETUP_JAVA=$(curl -s https://api.github.com/repos/actions/setup-java/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+          LATEST_UPLOAD_ARTIFACT=$(curl -s https://api.github.com/repos/actions/upload-artifact/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+          LATEST_NODE=$(curl -s https://api.github.com/repos/actions/setup-node/releases/latest | grep -Po '"tag_name": "v\K[^"]*')
+          
+          # Function to update workflow file
+          update_workflow() {
+            local file=$1
+            local current_version=$2
+            local latest_version=$3
+            local action_name=$4
+            
+            if [[ -f $file && "$current_version" != "v$latest_version" ]]; then
+              echo "Updating $action_name in $file from $current_version to v$latest_version"
+              sed -i "s|uses: $action_name@$current_version|uses: $action_name@v$latest_version|g" $file
+              echo "::set-output name=updated::true"
+            fi
+          }
+          
+          # Update all workflow files
+          for workflow in .github/workflows/*.yml; do
+            update_workflow "$workflow" "$CHECKOUT_VERSION" "$LATEST_CHECKOUT" "actions/checkout"
+            update_workflow "$workflow" "$SETUP_JAVA_VERSION" "$LATEST_SETUP_JAVA" "actions/setup-java"
+            update_workflow "$workflow" "$UPLOAD_ARTIFACT_VERSION" "$LATEST_UPLOAD_ARTIFACT" "actions/upload-artifact"
+            update_workflow "$workflow" "$NODE_VERSION" "$LATEST_NODE" "actions/setup-node"
+          done
+          
+          # Check if any updates were made
+          if [[ $(git status --porcelain) ]]; then
+            echo "::set-output name=changes::true"
+          else
+            echo "::set-output name=changes::false"
+          fi
+
+      - name: Create Pull Request
+        if: steps.check-updates.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update GitHub Actions to latest versions"
+          title: "Auto-update GitHub Actions to latest versions"
+          body: |
+            This PR automatically updates the GitHub Actions used in workflows to their latest versions.
+            
+            Changes:
+            - Updates actions/checkout
+            - Updates actions/setup-java
+            - Updates actions/upload-artifact
+            - Updates actions/setup-node
+            
+            This PR was created automatically by the self-updating workflow system.
+          branch: auto-update-actions
+          base: main
+          labels: auto-merge,dependencies

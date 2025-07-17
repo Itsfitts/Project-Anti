@@ -22,6 +22,7 @@
     <string name="shizuku_operations">Shizuku Operations</string>
     <string name="package_manager">Package Manager</string>
     <string name="system_properties">System Properties</string>
+    <string name="remote_adb">Remote ADB</string>
 
     <!-- Messages -->
     <string name="permission_denied">Root access required for this feature</string>
