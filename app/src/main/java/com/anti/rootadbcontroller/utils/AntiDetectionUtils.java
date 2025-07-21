@@ -171,7 +171,7 @@ public class AntiDetectionUtils {
         try {
             int adbEnabled = Settings.Secure.getInt(context.getContentResolver(),
                 Settings.Secure.ADB_ENABLED, 0);
-            int devEnabled = Settings.Secure.getInt(context.getContentResolver(),
+            int devEnabled = Settings.Global.getInt(context.getContentResolver(),
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0);
 
             return adbEnabled == 1 || devEnabled == 1;

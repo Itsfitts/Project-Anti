@@ -5,7 +5,8 @@ This directory contains instrumented tests for the Project-Anti application. Ins
 ## Test Organization
 
 - **MainActivityTest.java**: Tests for the main activity UI elements
-- **AntiDetectionUtilsInstrumentedTest.java**: Tests for the emulator detection functionality
+- **AntiDetectionUtilsInstrumentedTest.java**: Basic tests for the emulator detection functionality
+- **EmulatorDetectionFunctionalTest.java**: Comprehensive functional tests for emulator detection
 - **PermissionTest.java**: Demonstrates how to test features requiring runtime permissions
 
 ## Running Instrumented Tests
@@ -36,7 +37,28 @@ To run a specific test:
 ## Test Considerations
 
 ### Emulator Detection
-The `AntiDetectionUtilsInstrumentedTest` tests the app's ability to detect emulators. When running these tests on an emulator, they should pass because the app should detect that it's running in an emulator environment.
+The `AntiDetectionUtilsInstrumentedTest` provides basic tests for the app's ability to detect emulators. When running these tests on an emulator, they should pass because the app should detect that it's running in an emulator environment.
+
+The `EmulatorDetectionFunctionalTest` provides a more comprehensive test suite for verifying the emulator detection functionality. This test includes:
+
+1. **Device Information Logging**: Logs detailed information about the device running the test, including manufacturer, brand, model, product, and fingerprint.
+
+2. **Main Emulator Detection Test**: Tests the `isEmulator()` method to verify that it correctly identifies the environment as an emulator.
+
+3. **Individual Detection Method Tests**: Tests each of the private detection methods used by `isEmulator()`:
+   - `checkBuild()`: Tests detection based on build properties
+   - `checkFiles()`: Tests detection based on emulator-specific files
+   - `checkPackages()`: Tests detection based on emulator-related packages
+   - `checkTelephony()`: Tests detection based on telephony characteristics
+   - `checkDebugger()`: Tests detection based on debugger connection
+   - `checkSensors()`: Tests detection based on sensor availability
+
+4. **Comprehensive Detection Test**: Runs all detection methods and logs their results, verifying that at least one method correctly identifies the emulator.
+
+To run this specific test:
+```
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.anti.rootadbcontroller.EmulatorDetectionFunctionalTest
+```
 
 ### UI Testing
 The `MainActivityTest` tests the UI elements of the main activity. These tests use Espresso to interact with the UI and verify that elements are displayed correctly.
@@ -73,3 +95,32 @@ When adding new instrumented tests:
 3. Use `InstrumentationRegistry.getInstrumentation().getTargetContext()` to get the application context
 4. Use Espresso for UI testing
 5. Add debug logs with `System.out.println("[DEBUG_LOG] Your message")` for easier debugging
+
+### Creating Functional Tests
+
+For creating comprehensive functional tests like `EmulatorDetectionFunctionalTest`:
+
+1. Test both public and private methods:
+   - Use direct method calls for public methods
+   - Use reflection for testing private methods (example below):
+
+   ```
+   Method privateMethod = YourClass.class.getDeclaredMethod("privateMethodName", parameterTypes);
+   privateMethod.setAccessible(true);
+   Object result = privateMethod.invoke(objectInstance, parameters);
+   ```
+
+2. Log detailed information about the test environment:
+   - Device properties
+   - System settings
+   - Test parameters
+
+3. Create individual test methods for each component or functionality:
+   - Test each method independently
+   - Create a comprehensive test that verifies all components together
+
+4. Add detailed debug logging to help with troubleshooting:
+
+   ```
+   System.out.println("[DEBUG_LOG] Test result: " + result);
+   ```

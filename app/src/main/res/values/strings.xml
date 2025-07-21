@@ -61,4 +61,30 @@
     <!-- Warnings -->
     <string name="warning_dangerous_operation">This operation may be dangerous. Continue?</string>
     <string name="warning_data_extraction">This will extract sensitive data from the device</string>
+
+    <!-- Detailed feature explanations -->
+    <string name="keylogging_explanation">Monitors and logs all text input from the keyboard. This feature requires accessibility service permissions and can capture passwords, messages, and other sensitive information typed on the device.</string>
+    <string name="data_exfiltration_explanation">Extracts sensitive data like contacts, messages, photos, and account information from the device. This feature demonstrates how malicious apps can access and collect personal data.</string>
+    <string name="silent_install_explanation">Installs APK files without user interaction or notification. This feature requires root or ADB permissions and can be used to install apps without the user\'s knowledge.</string>
+    <string name="network_monitor_explanation">Displays all active network connections on the device, including IP addresses, ports, and protocols. This feature helps identify potentially suspicious network activity.</string>
+    <string name="file_access_explanation">Allows browsing and viewing files in protected system directories that are normally inaccessible. This feature requires root or Shizuku permissions.</string>
+    <string name="system_control_explanation">Controls system functions like rebooting, toggling hardware components, or changing system settings. This feature demonstrates how privileged apps can manipulate device functionality.</string>
+    <string name="screenshot_explanation">Takes a screenshot of the current screen without any visual indication or notification to the user. This feature can capture sensitive information displayed on screen.</string>
+    <string name="log_access_explanation">Accesses and displays system-level logs (logcat) which may contain sensitive information about app operations and system events. This feature requires special permissions.</string>
+    <string name="mic_recorder_explanation">Silently records audio from the microphone without user notification. This feature demonstrates how apps can potentially eavesdrop on conversations.</string>
+    <string name="location_tracker_explanation">Fetches the device\'s last known GPS location and can track location changes over time. This feature shows how apps can monitor a user\'s physical location.</string>
+    <string name="overlay_attack_explanation">Demonstrates a UI overlay attack by drawing a window over other apps. This technique can be used for phishing by creating fake login screens over legitimate apps.</string>
+    <string name="hide_app_icon_explanation">Hides the app icon from the launcher, making it difficult for users to find and uninstall the app. This feature shows how malicious apps can maintain persistence.</string>
+    <string name="permissions_scanner_explanation">Scans all installed apps and lists those with potentially dangerous permissions. This feature helps identify apps that may be accessing sensitive data or functions.</string>
+    <string name="overlay_detector_explanation">Lists all apps that have permission to draw over other applications. This helps identify potential overlay attack vectors from other apps.</string>
+    <string name="hidden_app_finder_explanation">Finds installed apps that do not have a launcher icon. This feature helps identify potentially hidden malicious apps on the device.</string>
+    <string name="camera_mic_detector_explanation">Detects if the camera or microphone is currently being used by any app. This helps identify potential spying or eavesdropping by installed applications.</string>
+    <string name="stealth_camera_explanation">Silently takes a picture from the front camera without preview or shutter sound. This demonstrates how apps can potentially spy on users visually.</string>
+    <string name="get_clipboard_explanation">Gets the current clipboard content, which may contain sensitive information like passwords or personal data. This shows how apps can access copied information.</string>
+    <string name="set_clipboard_explanation">Sets the clipboard content, which could be used to inject malicious data or commands that a user might unknowingly paste elsewhere.</string>
+    <string name="shizuku_operations_explanation">Performs operations using Shizuku, which provides elevated permissions similar to ADB. This demonstrates alternative methods for gaining privileged access.</string>
+    <string name="package_manager_explanation">Manages installed packages using Shizuku or root permissions. This can be used to install, uninstall, or modify apps without user interaction.</string>
+    <string name="system_properties_explanation">Views system properties and device information that may not be accessible to normal apps. This can be used for device fingerprinting or identifying security vulnerabilities.</string>
+    <string name="remote_adb_explanation">Controls ADB over the network, allowing remote access to the device. This feature demonstrates how devices can be controlled remotely if improperly secured.</string>
+    <string name="automation_settings_explanation">Configure automatic tasks that execute when certain conditions are met. This feature shows how malicious functionality can be triggered based on system events.</string>
 </resources>
