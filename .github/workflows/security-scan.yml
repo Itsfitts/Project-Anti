@@ -39,7 +39,7 @@ jobs:
             --scan app/libs
 
       - name: Upload Dependency Check Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: reports
@@ -60,7 +60,7 @@ jobs:
           ./gradlew lintDebug
 
       - name: Upload Lint Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lint-results
           path: app/build/reports/lint-results-debug.html
@@ -84,7 +84,7 @@ jobs:
           grep -r "android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.ACCESS_FINE_LOCATION\|android.permission.READ_CONTACTS\|android.permission.READ_CALENDAR\|android.permission.READ_EXTERNAL_STORAGE\|android.permission.WRITE_EXTERNAL_STORAGE\|android.permission.READ_CALL_LOG\|android.permission.READ_SMS" app/src/main/AndroidManifest.xml | wc -l >> security-reports/permissions.md
 
       - name: Upload Security Reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: security-reports

@@ -59,7 +59,7 @@ jobs:
           cat apk-analysis/*.txt | grep "methods:" >> apk-analysis/summary.md
 
       - name: Upload APK Analysis
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: apk-analysis
           path: apk-analysis/
@@ -137,7 +137,7 @@ jobs:
           echo '```' >> performance-report/summary.md
 
       - name: Upload performance report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-report
           path: performance-report/
