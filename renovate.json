@@ -1,39 +1,69 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base",
+    "config:recommended",
     ":maintainLockFilesWeekly",
     ":prHourlyLimitNone",
     ":prConcurrentLimitNone"
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "matchCurrentVersion": "!/^0/",
       "automerge": true,
-      "labels": ["auto-merge", "dependencies"]
+      "labels": [
+        "auto-merge",
+        "dependencies"
+      ]
     },
     {
-      "matchPackagePatterns": ["^androidx\\."],
       "groupName": "androidx dependencies",
-      "labels": ["android", "dependencies"]
+      "labels": [
+        "android",
+        "dependencies"
+      ],
+      "matchPackageNames": [
+        "/^androidx\\./"
+      ]
     },
     {
-      "matchPackagePatterns": ["^com\\.google\\.android"],
       "groupName": "google android dependencies",
-      "labels": ["android", "dependencies"]
+      "labels": [
+        "android",
+        "dependencies"
+      ],
+      "matchPackageNames": [
+        "/^com\\.google\\.android/"
+      ]
     },
     {
-      "matchPackagePatterns": ["gradle"],
       "groupName": "gradle dependencies",
-      "labels": ["gradle", "dependencies"]
+      "labels": [
+        "gradle",
+        "dependencies"
+      ],
+      "matchPackageNames": [
+        "/gradle/"
+      ]
     },
     {
-      "matchPackagePatterns": ["^kotlin"],
       "groupName": "kotlin dependencies",
-      "labels": ["kotlin", "dependencies"]
+      "labels": [
+        "kotlin",
+        "dependencies"
+      ],
+      "matchPackageNames": [
+        "/^kotlin/"
+      ]
     }
   ],
-  "assignees": ["tokenblkguy"],
-  "schedule": ["before 3am on Monday"]
+  "assignees": [
+    "tokenblkguy"
+  ],
+  "schedule": [
+    "before 3am on Monday"
+  ]
 }
