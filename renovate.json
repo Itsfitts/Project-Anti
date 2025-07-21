@@ -32,8 +32,20 @@
       "matchPackagePatterns": ["^kotlin"],
       "groupName": "kotlin dependencies",
       "labels": ["kotlin", "dependencies"]
+    },
+    {
+      "matchPackageNames": ["eu.chainfire:libsuperuser"],
+      "enabled": false,
+      "description": "Disable libsuperuser updates as the package is not available in standard Maven repositories"
+    },
+    {
+      "matchPackagePatterns": ["^dev\\.rikka\\.shizuku"],
+      "groupName": "shizuku dependencies",
+      "labels": ["android", "dependencies"]
     }
   ],
-  "assignees": ["tokenblkguy"],
-  "schedule": ["before 3am on Monday"]
+  "assignees": ["HeartlessVeteran2"],
+  "schedule": ["before 3am on Monday"],
+  "ignorePaths": ["**/build/**", "**/gradle/wrapper/**"],
+  "prConcurrentLimit": 5
 }
