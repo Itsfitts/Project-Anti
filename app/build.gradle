@@ -1,12 +1,39 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jlleitschuh.gradle.ktlint' version '13.0.0'
+    alias(libs.plugins.ktlint)
 }
 
 android {
     namespace = 'com.anti.rootadbcontroller'
     compileSdk = 34
+    buildToolsVersion '34.0.0'
+
+    // Signing configuration for release builds
+    signingConfigs {
+        release {
+            // Check if we're running in a CI environment
+            if (System.getenv("CI")) {
+                // Use environment variables in CI environment
+                storeFile file(System.getenv("KEYSTORE_FILE") ?: "")
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias System.getenv("KEY_ALIAS") ?: ""
+                keyPassword System.getenv("KEY_PASSWORD") ?: ""
+            } else {
+                // Load from local.properties for local development
+                def keystorePropertiesFile = rootProject.file("keystore.properties")
+                if (keystorePropertiesFile.exists()) {
+                    def keystoreProperties = new Properties()
+                    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+                    storeFile file(keystoreProperties['storeFile'] ?: "")
+                    storePassword keystoreProperties['storePassword'] ?: ""
+                    keyAlias keystoreProperties['keyAlias'] ?: ""
+                    keyPassword keystoreProperties['keyPassword'] ?: ""
+                }
+            }
+        }
+    }
 
     defaultConfig {
         applicationId "com.anti.rootadbcontroller"
@@ -24,193 +51,53 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Keep important classes and methods
+            proguardFile 'proguard-rules.pro'
+            // Apply signing configuration
+            signingConfig signingConfigs.release
         }
-      plugins {
-          id 'com.android.application'
-          id 'org.jetbrains.kotlin.android'
-          id 'org.jlleitschuh.gradle.ktlint' version '11.3.2'
-      }
 
-      android {
-          namespace = 'com.anti.rootadbcontroller'
-          compileSdk = 34
-
-          defaultConfig {
-              applicationId "com.anti.rootadbcontroller"
-              minSdk = 21
-              targetSdk = 34
-              versionCode 1
-              versionName "1.0"
-              testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-          }
-
-          buildFeatures {
-              compose = true
-          }
-
-          buildTypes {
-              release {
-                  minifyEnabled false
-                  proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-              }
-              create("staging") {
-                  initWith(getByName("release"))
-                  applicationIdSuffix ".staging"
-                  versionNameSuffix "-staging"
-                  debuggable true
-              }
-              create("customTest") {
-                  initWith(getByName("release"))
-                  applicationIdSuffix ".customtest"
-                  versionNameSuffix "-customtest"
-                  debuggable true
-              }
-              create("test") {
-                  initWith(getByName("release"))
-                  applicationIdSuffix ".test"
-                  versionNameSuffix "-test"
-                  debuggable true
-              }
-          }
-
-          compileOptions {
-              sourceCompatibility JavaVersion.VERSION_17
-              targetCompatibility JavaVersion.VERSION_17
-          }
-
-          kotlinOptions {
-              jvmTarget = '17'
-          }
-
-          composeOptions {
-              kotlinCompilerExtensionVersion = '1.5.15'
-          }
-
-          dependenciesInfo {
-              includeInBundle true
-              includeInApk true
-          }
-
-          buildToolsVersion '34.0.0'
-
-          lint {
-              abortOnError false
-              checkReleaseBuilds true
-              checkAllWarnings true
-              warningsAsErrors false
-              ignoreWarnings false
-              quiet false
-              showAll true
-              explainIssues true
-              checkDependencies true
-              disable 'InvalidPackage', 'GradleDependency', 'OldTargetApi'
-              htmlReport true
-              xmlReport true
-              htmlOutput file("${project.buildDir}/reports/lint-results.html")
-              xmlOutput file("${project.buildDir}/reports/lint-results.xml")
-          }
-      }
-
-      dependencies {
-          implementation 'androidx.appcompat:appcompat:1.6.1'
-          implementation 'com.google.android.material:material:1.12.0'
-          implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-          implementation 'androidx.recyclerview:recyclerview:1.3.2'
-          implementation 'androidx.cardview:cardview:1.0.0'
-
-          implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.2.0'
-
-          implementation 'dev.rikka.shizuku:api:13.1.5'
-          implementation 'dev.rikka.shizuku:provider:13.1.5'
-
-          implementation 'eu.chainfire:libsuperuser:1.1.1'
-
-          implementation 'com.google.code.gson:gson:2.10.1'
-
-          implementation platform('androidx.compose:compose-bom:2024.02.00')
-          implementation 'androidx.compose.ui:ui'
-          implementation 'androidx.compose.ui:ui-tooling-preview'
-          implementation 'androidx.activity:activity-compose:1.8.2'
-
-          testImplementation 'junit:junit:4.13.2'
-          androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-          androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-      }  android {
-            // ... other android configurations ...
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                }
-                // This 'staging' build type is correctly defined
-                create("staging") { // Or any other name not starting with "test"
-                    initWith(getByName("release")) // If you're using Kotlin DSL, otherwise use release
-                    applicationIdSuffix ".staging" // Update the suffix accordingly
-                    versionNameSuffix "-staging"   // Update the suffix accordingly
-                    debuggable true
-                }
-                // If you intended to have a 'test' build type for general testing (not unit/instrumented tests)
-                // you should rename it to something else as well, similar to 'staging'.
-                // For example, 'internalTesting' or 'qaBuild'.
-                // If this was meant for Android Test related configurations, it's usually handled differently.
-                // For now, I'll assume you wanted another custom build type similar to staging.
-                // If this 'test' block was a mistake or for actual test configurations, it should be removed or handled differently.
-                // Let's assume you want to keep a similar custom build type.
-                create("customTest") { // Renamed from 'test'
-                    initWith(getByName("release")) // Or debug, depending on your needs
-                    applicationIdSuffix ".customtest"
-                    versionNameSuffix "-customtest"
-                    debuggable true
-                }
-            }
-            // ... other android configurations like compileOptions, kotlinOptions, etc. ...
-        }        android {
-            // ...
-            buildTypes {
-                release {
-                    minifyEnabled false
-                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                }
-                // Rename 'test' to something like 'staging' or 'internalTest'
-                create("staging") { // Or any other name not starting with "test"
-                    initWith(getByName("release")) // If you're using Kotlin DSL, otherwise use release
-                    applicationIdSuffix ".staging" // Update the suffix accordingly
-                    versionNameSuffix "-staging"   // Update the suffix accordingly
-                    debuggable true
-                }
-            }
-            // ...
-        }        test {
+        staging {
             initWith release
-            applicationIdSuffix ".test"
-            versionNameSuffix "-test"
+            applicationIdSuffix ".staging"
+            versionNameSuffix "-staging"
             debuggable true
+            // Disable minification for staging to aid debugging
+            minifyEnabled false
+            shrinkResources false
         }
-        test {
+
+        customTest {
             initWith release
-            applicationIdSuffix ".test"
-            versionNameSuffix "-test"
+            applicationIdSuffix ".customtest"
+            versionNameSuffix "-customtest"
             debuggable true
+            // Disable minification for testing to aid debugging
+            minifyEnabled false
+            shrinkResources false
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = '17'
     }
+
     composeOptions {
-        kotlinCompilerExtensionVersion = '1.5.15'
+        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
+
     dependenciesInfo {
         includeInBundle true
         includeInApk true
     }
-    buildToolsVersion '34.0.0'
 
     lint {
         abortOnError false
@@ -231,32 +118,36 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.1'
-    implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'androidx.cardview:cardview:1.0.0'
+    // AndroidX
+    implementation(libs.appcompat)
+    implementation(libs.material)
+    implementation(libs.constraintlayout)
+    implementation(libs.recyclerview)
+    implementation(libs.cardview)
 
     // Kotlin standard library
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.2.0'
+    implementation(libs.kotlin.stdlib)
 
-    // Shizuka dependencies
-    implementation 'dev.rikka.shizuku:api:13.1.5'
-    implementation 'dev.rikka.shizuku:provider:13.1.5'
+    // Shizuku dependencies
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 
     // For root operations
-    implementation 'eu.chainfire:libsuperuser:1.1.1'
+    implementation(libs.libsuperuser)
 
     // For JSON operations
-    implementation 'com.google.code.gson:gson:2.13.1'
+    implementation(libs.gson)
 
     // Compose BOM and dependencies
-    implementation platform('androidx.compose:compose-bom:2025.07.00')
-    implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.ui:ui-tooling-preview'
-    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.activity.compose)
 
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito)
+    testImplementation(libs.robolectric)
+    androidTestImplementation(libs.androidx.test.ext)
+    androidTestImplementation(libs.espresso)
 }

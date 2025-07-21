@@ -69,6 +69,9 @@ import com.anti.rootadbcontroller.utils.ShizukuUtils
 import java.io.File
 import java.io.IOException
 import java.util.Calendar
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -132,7 +135,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkShizukuStatus() {
-        Thread {
+        lifecycleScope.launch(Dispatchers.IO) {
             val shizukuUtils = ShizukuUtils.getInstance()
             val available = shizukuUtils.isShizukuAvailable
             val hasPermission = shizukuUtils.hasShizukuPermission()
@@ -140,7 +143,7 @@ class MainActivity : ComponentActivity() {
             val wasShizukuAvailable = isShizukuAvailable
             isShizukuAvailable = available && hasPermission
 
-            runOnUiThread {
+            launch(Dispatchers.Main) {
                 Log.d(TAG, "Shizuku status - Available: $available, Permission: $hasPermission")
 
                 // If Shizuku access was just gained, trigger automations
@@ -151,16 +154,16 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-        }.start()
+        }
     }
 
     private fun requestShizukuPermission() {
         shizukuManagerService?.requestShizukuPermission()
         // Recheck status after a delay
-        Thread {
-            Thread.sleep(1000)
+        lifecycleScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(1000)
             checkShizukuStatus()
-        }.start()
+        }
     }
 
     private fun onFeatureClick(featureId: Int) {
@@ -193,15 +196,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkRootAccess() {
-        Thread {
+        lifecycleScope.launch(Dispatchers.IO) {
             val wasRootAvailable = isRootAvailable
             isRootAvailable = RootUtils.isRootAvailable()
 
             // If root access was just gained, trigger automations
             if (isRootAvailable && !wasRootAvailable) {
-                AutomationUtils.executeRootAutomations(this)
+                launch(Dispatchers.Main) {
+                    AutomationUtils.executeRootAutomations(this@MainActivity)
+                }
             }
-        }.start()
+        }
     }
 
     private fun scheduleKillSwitch() {

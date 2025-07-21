@@ -9,21 +9,7 @@ insert_final_newline = true
 max_line_length = 120
 trim_trailing_whitespace = true
 
-[*.{kt,kts}]
-# Ktlint rules
-ktlint_standard_no-wildcard-imports = true
-ktlint_standard_trailing-comma-on-call-site = true
-ktlint_standard_trailing-comma-on-declaration-site = true
-ktlint_standard_filename = true
-ktlint_standard_function-naming = true
-ktlint_standard_no-empty-first-line-in-method-block = true
-ktlint_standard_string-template = true
-ktlint_standard_argument-list-wrapping = true
-ktlint_standard_multiline-if-else = true
-ktlint_standard_comment-spacing = true
-ktlint_standard_import-ordering = true
-ktlint_standard_no-consecutive-blank-lines = true
-ktlint_standard_no-blank-line-before-rbrace = true
+
 
 [*.{java}]
 # Java specific settings
