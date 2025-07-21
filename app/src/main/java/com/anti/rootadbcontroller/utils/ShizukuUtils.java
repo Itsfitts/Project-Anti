@@ -189,6 +189,23 @@ public class ShizukuUtils {
             StringBuilder output = new StringBuilder();
             StringBuilder error = new StringBuilder();
 
+            // Create readers for the process streams
+            java.io.BufferedReader stdoutReader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+            java.io.BufferedReader stderrReader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getErrorStream()));
+
+            // Read the output stream
+            String line;
+            while ((line = stdoutReader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+
+            // Read the error stream
+            while ((line = stderrReader.readLine()) != null) {
+                error.append(line).append("\n");
+            }
+
             // Wait for process completion
             int exitCode = process.waitFor();
 

