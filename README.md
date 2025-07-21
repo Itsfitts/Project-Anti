@@ -48,6 +48,10 @@ Contributions are welcome! If you would like to contribute to this project, plea
 This project provides a user-friendly interface for ADB functionality.
 For information about specific features, please refer to internal documentation.
 
+## 📦 Dependency Management
+This project uses Renovate Bot for automated dependency management. See [docs/dependency-management.md](docs/dependency-management.md) for more information about how dependencies are managed and updated.
+
+## 📄 License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 For **educational purposes only**. Use only on devices you own or have permission to access.
 
