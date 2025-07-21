@@ -122,14 +122,23 @@ public class AntiDetectionUtils {
 
     /**
      * Check sensor availability (emulators often lack proper sensors)
+     * This method checks for specific sensors that are commonly missing in emulators
+     * but present in real devices
      */
     private static boolean checkSensors(Context context) {
         try {
             android.hardware.SensorManager sm = (android.hardware.SensorManager)
                 context.getSystemService(Context.SENSOR_SERVICE);
             if (sm != null) {
-                List<android.hardware.Sensor> sensors = sm.getSensorList(android.hardware.Sensor.TYPE_ALL);
-                return sensors.size() < 5; // Real devices typically have more sensors
+                // Check for specific sensors that are typically present in real devices
+                // but often missing or improperly implemented in emulators
+                boolean hasAccelerometer = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER) != null;
+                boolean hasGyroscope = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null;
+                boolean hasProximity = sm.getDefaultSensor(android.hardware.Sensor.TYPE_PROXIMITY) != null;
+
+                // Most real devices have at least accelerometer and proximity sensors
+                // If both are missing, it's likely an emulator
+                return !hasAccelerometer && !hasProximity;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error checking sensors", e);
@@ -142,7 +151,7 @@ public class AntiDetectionUtils {
      */
     public static boolean hasAnalysisTools(Context context) {
         String[] analysisApps = {
-            "com.android.vending", // Play Store (sometimes removed in analysis)
+            // Removed Play Store as it's a legitimate app, not an analysis tool
             "de.robv.android.xposed.installer", // Xposed
             "com.topjohnwu.magisk", // Magisk
             "eu.chainfire.supersu", // SuperSU
@@ -183,6 +192,7 @@ public class AntiDetectionUtils {
 
     /**
      * Anti-forensics: Clear app traces and logs
+     * This method clears temporary files and caches but preserves essential settings
      */
     public static void clearTraces(Context context) {
         try {
@@ -196,9 +206,11 @@ public class AntiDetectionUtils {
                 deleteRecursively(externalCache);
             }
 
-            // Clear shared preferences
-            File prefsDir = new File(context.getApplicationInfo().dataDir, "shared_prefs");
-            deleteRecursively(prefsDir);
+            // Don't clear shared preferences as they contain essential app settings
+            // Instead, we could selectively clear specific non-essential preferences if needed
+            // For example:
+            // SharedPreferences prefs = context.getSharedPreferences("non_essential_prefs", Context.MODE_PRIVATE);
+            // prefs.edit().clear().apply();
 
         } catch (Exception e) {
             Log.e(TAG, "Error clearing traces", e);
@@ -224,11 +236,26 @@ public class AntiDetectionUtils {
 
     /**
      * Detect if app is being analyzed
+     * This method uses a more nuanced approach to determine if the app is likely
+     * being analyzed in a security testing environment
      */
     public static boolean isBeingAnalyzed(Context context) {
-        return isEmulator(context) ||
-               hasAnalysisTools(context) ||
-               isDeveloperModeEnabled(context) ||
-               checkDebugger();
+        // Count the number of suspicious indicators
+        int suspiciousFactors = 0;
+
+        if (isEmulator(context)) suspiciousFactors++;
+        if (hasAnalysisTools(context)) suspiciousFactors++;
+        if (checkDebugger()) suspiciousFactors++;
+
+        // Developer mode alone is not a strong indicator of analysis
+        // Many legitimate users and developers have it enabled
+        // We'll only count it if other factors are also present
+        if (isDeveloperModeEnabled(context) && suspiciousFactors > 0) {
+            suspiciousFactors++;
+        }
+
+        // Consider the app being analyzed if at least two suspicious factors are detected
+        // This reduces false positives while still catching most analysis environments
+        return suspiciousFactors >= 2;
     }
 }

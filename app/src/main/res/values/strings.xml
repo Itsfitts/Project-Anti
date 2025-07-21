@@ -87,4 +87,7 @@
     <string name="system_properties_explanation">Views system properties and device information that may not be accessible to normal apps. This can be used for device fingerprinting or identifying security vulnerabilities.</string>
     <string name="remote_adb_explanation">Controls ADB over the network, allowing remote access to the device. This feature demonstrates how devices can be controlled remotely if improperly secured.</string>
     <string name="automation_settings_explanation">Configure automatic tasks that execute when certain conditions are met. This feature shows how malicious functionality can be triggered based on system events.</string>
+
+    <!-- Clipboard content -->
+    <string name="clipboard_pwned_text">Pwned by Project-Anti</string>
 </resources>

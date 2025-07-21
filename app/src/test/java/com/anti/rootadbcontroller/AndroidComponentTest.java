@@ -16,7 +16,7 @@ import static org.junit.Assert.assertNotNull;
  * Example test for Android components using Robolectric.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = {28})
+@Config(sdk = {34})
 public class AndroidComponentTest {
 
     @Test

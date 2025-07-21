@@ -3,14 +3,19 @@ package com.anti.rootadbcontroller
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.anti.rootadbcontroller.features.FeatureHandler
 import com.anti.rootadbcontroller.services.ShizukuManagerService
@@ -56,7 +61,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         featureHandler = FeatureHandler(this)
         checkRootAccess()
-        initializeShizuku()
+        // Initialize Shizuku Utils
+        ShizukuUtils.getInstance().initialize()
         scheduleKillSwitch()
 
         setContent {
@@ -72,21 +78,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isShizukuServiceBound) {
-            unbindService(shizukuServiceConnection)
-        }
-    }
-
-    private fun initializeShizuku() {
-        // Initialize Shizuku Utils
-        ShizukuUtils.getInstance().initialize()
-
+    override fun onStart() {
+        super.onStart()
         // Bind to Shizuku Manager Service
         val intent = Intent(this, ShizukuManagerService::class.java)
         bindService(intent, shizukuServiceConnection, BIND_AUTO_CREATE)
     }
+
+    override fun onStop() {
+        super.onStop()
+        if (isShizukuServiceBound) {
+            unbindService(shizukuServiceConnection)
+            isShizukuServiceBound = false
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Any cleanup that needs to happen when the activity is fully destroyed
+    }
+
 
     private fun checkShizukuStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -140,7 +151,7 @@ class MainActivity : ComponentActivity() {
             Constants.FEATURE_CAMERA_MIC_DETECTOR -> featureHandler.detectCameraMicUsage()
             Constants.FEATURE_STEALTH_CAMERA -> featureHandler.takeStealthPicture()
             Constants.FEATURE_GET_CLIPBOARD -> featureHandler.getClipboard()
-            Constants.FEATURE_SET_CLIPBOARD -> featureHandler.setClipboard("Pwned by Project-Anti")
+            Constants.FEATURE_SET_CLIPBOARD -> featureHandler.setClipboard(getString(R.string.clipboard_pwned_text))
             Constants.FEATURE_SHIZUKU_OPERATIONS -> featureHandler.showShizukuOperations(shizukuManagerService)
             Constants.FEATURE_PACKAGE_MANAGER -> featureHandler.showPackageManager(shizukuManagerService)
             Constants.FEATURE_SYSTEM_PROPERTIES -> featureHandler.showSystemProperties(shizukuManagerService)
@@ -166,7 +177,17 @@ class MainActivity : ComponentActivity() {
     private fun scheduleKillSwitch() {
         val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, com.anti.rootadbcontroller.services.KillSwitchReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        // Use appropriate flags based on Android version
+        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // For Android 12+ (API 31+), FLAG_IMMUTABLE is required
+            PendingIntent.FLAG_IMMUTABLE
+        } else {
+            // For older versions, we can use FLAG_UPDATE_CURRENT for better compatibility
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, pendingIntentFlags)
 
         val calendar = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, 7)

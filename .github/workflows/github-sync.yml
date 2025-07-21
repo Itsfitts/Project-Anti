@@ -1,0 +1,93 @@
+name: GitHub Repository Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Run weekly on Monday at midnight
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  sync-repository:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
+      - name: Authenticate GitHub CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Update repository settings
+        run: |
+          # Enable vulnerability alerts
+          gh api --method PUT repos/${{ github.repository }}/vulnerability-alerts
+
+          # Enable automated security fixes
+          gh api --method PUT repos/${{ github.repository }}/automated-security-fixes
+
+          # Update branch protection rules for main branch
+          gh api --method PUT repos/${{ github.repository }}/branches/main/protection \
+            -f required_status_checks='{"strict":true,"contexts":["Android CI"]}' \
+            -f enforce_admins=false \
+            -f required_pull_request_reviews='{"dismissal_restrictions":{},"dismiss_stale_reviews":true,"require_code_owner_reviews":true,"required_approving_review_count":1}' \
+            -f restrictions=null
+
+      - name: Sync labels
+        run: |
+          # Create or update labels
+          gh label create "bug" --color "d73a4a" --description "Something isn't working" || true
+          gh label create "documentation" --color "0075ca" --description "Improvements or additions to documentation" || true
+          gh label create "enhancement" --color "a2eeef" --description "New feature or request" || true
+          gh label create "dependencies" --color "0366d6" --description "Pull requests that update a dependency file" || true
+          gh label create "auto-merge" --color "28a745" --description "PRs that should be auto-merged" || true
+          gh label create "no-auto-fix" --color "e4e669" --description "PRs that should not be auto-fixed" || true
+          gh label create "auto-fixed" --color "fbca04" --description "PRs that have been auto-fixed" || true
+          gh label create "security" --color "d93f0b" --description "Security related changes" || true
+          gh label create "performance" --color "5319e7" --description "Performance improvements" || true
+
+      - name: Update GitHub Pages
+        run: |
+          if [[ -d "docs" ]]; then
+            # Enable GitHub Pages if docs directory exists
+            gh api --method PUT repos/${{ github.repository }}/pages \
+              -f source='{"branch":"main","path":"/docs"}'
+          fi
+
+      - name: Create report
+        id: report
+        run: |
+          echo "Repository settings updated successfully." > github_sync_report.md
+          echo "" >> github_sync_report.md
+          echo "## Actions performed:" >> github_sync_report.md
+          echo "- Enabled vulnerability alerts" >> github_sync_report.md
+          echo "- Enabled automated security fixes" >> github_sync_report.md
+          echo "- Updated branch protection rules" >> github_sync_report.md
+          echo "- Synchronized repository labels" >> github_sync_report.md
+          echo "- Updated GitHub Pages settings (if applicable)" >> github_sync_report.md
+          echo "" >> github_sync_report.md
+          echo "This report was generated automatically by the GitHub Repository Sync workflow." >> github_sync_report.md
+
+          # Create output for PR body
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          cat github_sync_report.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update GitHub repository settings"
+          title: "GitHub Repository Sync"
+          body: ${{ steps.report.outputs.report }}
+          branch: github-sync
+          base: main
+          labels: documentation

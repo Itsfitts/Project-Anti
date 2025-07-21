@@ -36,6 +36,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
+    <!-- Custom permission for kill switch -->
+    <permission
+        android:name="com.anti.rootadbcontroller.KILL_SWITCH_PERMISSION"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -46,7 +51,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RootADBController"
         android:requestLegacyExternalStorage="true"
-        tools:targetApi="31">
+        tools:targetApi="34">
 
         <!-- Main Activity -->
         <activity
@@ -101,9 +106,13 @@
         <!-- Kill Switch Receiver -->
         <receiver
             android:name=".services.KillSwitchReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="com.anti.rootadbcontroller.KILL_SWITCH_PERMISSION">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.anti.rootadbcontroller.KILL_SWITCH" />
             </intent-filter>
         </receiver>
 

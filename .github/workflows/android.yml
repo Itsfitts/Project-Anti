@@ -20,6 +20,11 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
@@ -29,8 +34,8 @@ jobs:
       - name: Run lint check
         run: ./gradlew lint
 
-      - name: Run unit tests
-        run: ./gradlew test
+      - name: Run unit tests with coverage
+        run: ./gradlew jacocoTestReport
 
       - name: Upload test results
         if: always()
@@ -41,9 +46,149 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results.html
             app/build/reports/lint-results.xml
+            app/build/reports/jacoco/jacocoTestReport/
 
-      - name: Upload build outputs
+      - name: Generate test summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "app/build/test-results/**/*.xml"
+          output: test-summary.md
+
+      - name: Add test summary to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: test-summary.md
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload all build outputs
         uses: actions/upload-artifact@v4
         with:
           name: app-build
           path: app/build/outputs/
+
+  instrumented-tests:
+    runs-on: macos-latest
+    needs: build
+    strategy:
+      matrix:
+        api-level: [21, 24, 29, 33]
+        target: [default]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Run instrumented tests with coverage
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: Nexus 6
+          script: ./gradlew jacocoAndroidTestReport
+
+      - name: Upload instrumented test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-results-api-${{ matrix.api-level }}
+          path: |
+            app/build/reports/androidTests/
+            app/build/reports/jacoco/jacocoAndroidTestReport/
+
+      - name: Generate instrumented test summary
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: "app/build/outputs/androidTest-results/**/*.xml"
+          output: instrumented-test-summary-api-${{ matrix.api-level }}.md
+
+      - name: Add instrumented test summary to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: instrumented-test-summary-api-${{ matrix.api-level }}.md
+
+  # Combined coverage report job
+  coverage-report:
+    runs-on: ubuntu-latest
+    needs: [build, instrumented-tests]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate combined coverage report
+        run: |
+          mkdir -p app/build/jacoco/
+          mkdir -p app/build/outputs/code_coverage/debugAndroidTest/connected/
+
+          # Copy unit test coverage data
+          cp -r artifacts/test-results/app/build/jacoco/testDebugUnitTest.exec app/build/jacoco/ || true
+
+          # Copy instrumented test coverage data from all API levels
+          for api_level_dir in artifacts/instrumented-test-results-api-*; do
+            if [ -d "$api_level_dir" ]; then
+              mkdir -p app/build/outputs/code_coverage/debugAndroidTest/connected/api-$(basename "$api_level_dir" | cut -d'-' -f5)
+              find "$api_level_dir" -name "*.ec" -exec cp {} app/build/outputs/code_coverage/debugAndroidTest/connected/api-$(basename "$api_level_dir" | cut -d'-' -f5)/coverage.ec \; || true
+            fi
+          done
+
+          # Generate combined report
+          ./gradlew jacocoCombinedReport || true
+
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage-report
+          path: app/build/reports/jacoco/jacocoCombinedReport/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: app/build/reports/jacoco/jacocoCombinedReport/xml/index.xml
+          flags: unittests,instrumentedtests
+          name: codecov-umbrella
+          fail_ci_if_error: false
