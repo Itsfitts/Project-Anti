@@ -15,11 +15,11 @@ This document contains a prioritized list of tasks to improve the Project-Anti c
 ## Testing
 
 - [x] 8. Create basic unit test structure in app/src/test
-- [ ] 9. Implement unit tests for utility classes (AdbUtils, AntiDetectionUtils, etc.)
-- [ ] 10. Create instrumented test structure in app/src/androidTest
-- [ ] 11. Implement UI tests for main activities and fragments
-- [ ] 12. Set up CI/CD pipeline for automated testing
-- [ ] 13. Implement code coverage reporting
+- [x] 9. Implement unit tests for utility classes (AdbUtils, AntiDetectionUtils, etc.)
+- [x] 10. Create instrumented test structure in app/src/androidTest
+- [x] 11. Implement UI tests for main activities and fragments
+- [x] 12. Set up CI/CD pipeline for automated testing
+- [x] 13. Implement code coverage reporting
 - [ ] 14. Add integration tests for service interactions
 
 ## Code Quality

@@ -62,7 +62,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class SimpleTest {
-    
+
     @Test
     public void testAddition() {
         int result = 2 + 2;
@@ -74,12 +74,23 @@ public class SimpleTest {
 Example of testing Android components with Robolectric:
 ```java
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = {28})
+@Config(sdk = {34})
 public class AndroidComponentTest {
-    
+
     @Test
-    public void testSomeAndroidFeature() {
-        // Test code using Android components
+    public void testContextNotNull() {
+        Context context = RuntimeEnvironment.getApplication();
+        assertNotNull("Application context should not be null", context);
+    }
+
+    @Test
+    public void testTextViewCreation() {
+        Context context = RuntimeEnvironment.getApplication();
+        TextView textView = new TextView(context);
+        textView.setText("Hello Robolectric");
+
+        assertEquals("TextView text should be set correctly",
+                "Hello Robolectric", textView.getText().toString());
     }
 }
 ```
@@ -97,10 +108,88 @@ public void testPrivateMethod() throws Exception {
 }
 ```
 
+#### Instrumented Tests
+1. Create a test class in the `app/src/androidTest/java/` directory
+2. Use `@RunWith(AndroidJUnit4.class)` annotation
+3. Use `ActivityScenarioRule` for testing activities
+4. Use Espresso for UI testing
+
+Example of an instrumented test:
+```java
+@RunWith(AndroidJUnit4.class)
+public class MainActivityTest {
+
+    @Rule
+    public ActivityScenarioRule<MainActivity> activityRule =
+        new ActivityScenarioRule<>(MainActivity.class);
+
+    @Test
+    public void testRecyclerViewDisplayed() {
+        // Check if the RecyclerView is displayed
+        Espresso.onView(ViewMatchers.withId(R.id.recyclerView))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+    }
+
+    @Test
+    public void testAppTitleDisplayed() {
+        // Check if the app title is displayed in the toolbar
+        Espresso.onView(ViewMatchers.withText(R.string.app_name))
+            .check(ViewAssertions.matches(ViewMatchers.isDisplayed()));
+    }
+}
+```
+
+Example of testing utility classes with instrumented tests:
+```java
+@RunWith(AndroidJUnit4.class)
+public class AntiDetectionUtilsInstrumentedTest {
+
+    private Context context;
+
+    @Before
+    public void setUp() {
+        // Get the instrumentation context
+        context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    }
+
+    @Test
+    public void testIsEmulator() {
+        // Test the isEmulator method
+        boolean result = AntiDetectionUtils.isEmulator(context);
+
+        // Log the result for debugging
+        System.out.println("[DEBUG_LOG] isEmulator result: " + result);
+
+        // Assert based on your environment
+        // assertTrue("Should detect that we're running on an emulator", result);
+    }
+}
+```
+
 ### Running Tests
 - **Run Unit Tests**: `./gradlew test`
 - **Run Instrumented Tests**: `./gradlew connectedAndroidTest`
 - **Run Specific Test Class**: `./gradlew testDebugUnitTest --tests "com.anti.rootadbcontroller.YourTestClass"`
+
+### Debugging Tests
+You can enhance debugging by adding logging to your tests:
+- Always start debug messages with `[DEBUG_LOG]` prefix
+- Java: `System.out.println("[DEBUG_LOG] Your message here")`
+- Kotlin: `println("[DEBUG_LOG] Your message here")`
+
+Example of a test with debug logging:
+```java
+@Test
+public void testStringLength() {
+    String testString = "Project-Anti";
+    int length = testString.length();
+
+    // Log for debugging
+    System.out.println("[DEBUG_LOG] String length: " + length);
+
+    assertEquals("String length should be 12", 12, length);
+}
+```
 
 ## Additional Development Information
 
@@ -141,6 +230,7 @@ The project uses both traditional Android XML layouts and Jetpack Compose for UI
 ### Debugging
 - Lint is configured with specific rules and reports
 - Developer mode detection is implemented in AntiDetectionUtils
+- Use the `[DEBUG_LOG]` prefix for debug messages in tests and code
 
 ### Security Considerations
 - The app includes anti-detection measures to prevent analysis
