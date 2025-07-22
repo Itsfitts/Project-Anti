@@ -11,69 +11,6 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
-
-    // Define the version catalog
-    versionCatalogs {
-        create("libs") {
-            // Versions
-            version("kotlin", "2.2.0")
-            version("compose-compiler", "1.5.15")
-            version("compose-bom", "2024.02.00")
-            version("appcompat", "1.6.1")
-            version("material", "1.12.0")
-            version("constraintlayout", "2.1.4")
-            version("recyclerview", "1.3.2")
-            version("cardview", "1.0.0")
-            version("activity-compose", "1.8.2")
-            version("shizuku", "13.1.5")
-            version("libsuperuser", "1.1.1")
-            version("gson", "2.10.1")
-
-            // Testing
-            version("junit", "4.13.2")
-            version("mockito", "4.11.0")
-            version("robolectric", "4.10.3")
-            version("androidx-test-ext", "1.1.5")
-            version("espresso", "3.5.1")
-
-            // Plugins
-            version("ktlint", "11.3.2")
-
-            // Libraries
-            library("kotlin-stdlib", "org.jetbrains.kotlin", "kotlin-stdlib").versionRef("kotlin")
-
-            // AndroidX
-            library("appcompat", "androidx.appcompat", "appcompat").versionRef("appcompat")
-            library("material", "com.google.android.material", "material").versionRef("material")
-            library("constraintlayout", "androidx.constraintlayout", "constraintlayout").versionRef("constraintlayout")
-            library("recyclerview", "androidx.recyclerview", "recyclerview").versionRef("recyclerview")
-            library("cardview", "androidx.cardview", "cardview").versionRef("cardview")
-
-            // Compose
-            library("compose-bom", "androidx.compose", "compose-bom").versionRef("compose-bom")
-            library("compose-ui", "androidx.compose.ui", "ui")
-            library("compose-ui-tooling-preview", "androidx.compose.ui", "ui-tooling-preview")
-            library("activity-compose", "androidx.activity", "activity-compose").versionRef("activity-compose")
-
-            // Shizuku
-            library("shizuku-api", "dev.rikka.shizuku", "api").versionRef("shizuku")
-            library("shizuku-provider", "dev.rikka.shizuku", "provider").versionRef("shizuku")
-
-            // Other
-            library("libsuperuser", "eu.chainfire", "libsuperuser").versionRef("libsuperuser")
-            library("gson", "com.google.code.gson", "gson").versionRef("gson")
-
-            // Testing
-            library("junit", "junit", "junit").versionRef("junit")
-            library("mockito", "org.mockito", "mockito-core").versionRef("mockito")
-            library("robolectric", "org.robolectric", "robolectric").versionRef("robolectric")
-            library("androidx-test-ext", "androidx.test.ext", "junit").versionRef("androidx-test-ext")
-            library("espresso", "androidx.test.espresso", "espresso-core").versionRef("espresso")
-
-            // Plugins
-            plugin("ktlint", "org.jlleitschuh.gradle.ktlint").versionRef("ktlint")
-        }
-    }
 }
 
 rootProject.name = "RootADBController"

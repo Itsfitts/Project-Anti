@@ -1,0 +1,78 @@
+name: Code Quality and Security
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly Monday 2 AM
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+    - name: Run security audit
+      run: ./gradlew dependencyCheckAnalyze
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: build/reports/dependency-check-report.html
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+    - name: Run ktlint
+      run: ./gradlew ktlintCheck
+    - name: Run detekt
+      run: ./gradlew detekt
+    - name: Upload analysis results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: build/reports/detekt/detekt.sarif
+
+  performance-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Run performance tests
+      run: ./gradlew connectedCheck
+    - name: Generate performance report
+      run: ./gradlew createDebugCoverageReport
+    - name: Upload performance data
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: app/build/reports/coverage/

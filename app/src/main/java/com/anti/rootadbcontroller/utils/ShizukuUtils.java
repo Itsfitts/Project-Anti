@@ -68,11 +68,12 @@ public class ShizukuUtils {
 
     /**
      * Initialize Shizuku integration
+     * @param context Application context
+     * @return true if initialization successful
      */
-    public void initialize() {
+    public boolean initialize(@NonNull Context context) {
         if (isInitialized) {
-            Log.d(TAG, "Shizuku already initialized");
-            return;
+            return true;
         }
 
         try {
@@ -83,13 +84,144 @@ public class ShizukuUtils {
 
             isInitialized = true;
             Log.i(TAG, "Shizuku initialized successfully");
+            return true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize Shizuku", e);
+            return false;
         }
     }
 
     /**
-     * Clean up Shizuku listeners
+     * Check if Shizuku is available and running
+     * @return true if Shizuku is available
+     */
+    public static boolean isShizukuAvailable() {
+        try {
+            return Shizuku.pingBinder();
+        } catch (Exception e) {
+            Log.d(TAG, "Shizuku not available: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if we have Shizuku permission
+     * @return true if permission is granted
+     */
+    public static boolean hasShizukuPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    /**
+     * Request Shizuku permission
+     */
+    public void requestShizukuPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            if (Shizuku.shouldShowRequestPermissionRationale()) {
+                Log.i(TAG, "Should show permission rationale");
+            }
+            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE);
+        }
+    }
+
+    /**
+     * Execute privileged command through Shizuku
+     * @param command Command to execute
+     * @return Command result
+     */
+    @Nullable
+    public CommandResult executePrivilegedCommand(@NonNull String command) {
+        if (!isShizukuAvailable() || !hasShizukuPermission()) {
+            Log.w(TAG, "Shizuku not available or permission denied");
+            return null;
+        }
+
+        try {
+            // Execute command using Shizuku's shell interface
+            Process process = Shizuku.newProcess(new String[]{"sh", "-c", command}, null, null);
+            return AdbUtils.readProcessOutput(process);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to execute command via Shizuku: " + command, e);
+            return null;
+        }
+    }
+
+    /**
+     * Install APK using Shizuku
+     * @param apkPath Path to APK file
+     * @return Installation result
+     */
+    @Nullable
+    public CommandResult installApkWithShizuku(@NonNull String apkPath) {
+        String command = "pm install -r \"" + apkPath + "\"";
+        return executePrivilegedCommand(command);
+    }
+
+    /**
+     * Uninstall package using Shizuku
+     * @param packageName Package to uninstall
+     * @return Uninstallation result
+     */
+    @Nullable
+    public CommandResult uninstallPackageWithShizuku(@NonNull String packageName) {
+        String command = "pm uninstall \"" + packageName + "\"";
+        return executePrivilegedCommand(command);
+    }
+
+    /**
+     * Grant permission to package using Shizuku
+     * @param packageName Target package
+     * @param permission Permission to grant
+     * @return Operation result
+     */
+    @Nullable
+    public CommandResult grantPermission(@NonNull String packageName, @NonNull String permission) {
+        String command = "pm grant \"" + packageName + "\" \"" + permission + "\"";
+        return executePrivilegedCommand(command);
+    }
+
+    /**
+     * Revoke permission from package using Shizuku
+     * @param packageName Target package
+     * @param permission Permission to revoke
+     * @return Operation result
+     */
+    @Nullable
+    public CommandResult revokePermission(@NonNull String packageName, @NonNull String permission) {
+        String command = "pm revoke \"" + packageName + "\" \"" + permission + "\"";
+        return executePrivilegedCommand(command);
+    }
+
+    /**
+     * Enable/disable package component using Shizuku
+     * @param packageName Target package
+     * @param componentName Component name
+     * @param enable true to enable, false to disable
+     * @return Operation result
+     */
+    @Nullable
+    public CommandResult setComponentEnabled(@NonNull String packageName, @NonNull String componentName, boolean enable) {
+        String action = enable ? "enable" : "disable";
+        String command = "pm " + action + " \"" + packageName + "/" + componentName + "\"";
+        return executePrivilegedCommand(command);
+    }
+
+    /**
+     * Execute ADB shell command through Shizuku
+     * @param shellCommand Shell command to execute
+     * @return Command result
+     */
+    @Nullable
+    public CommandResult executeShellCommand(@NonNull String shellCommand) {
+        return executePrivilegedCommand(shellCommand);
+    }
+
+    /**
+     * Cleanup Shizuku resources
      */
     public void cleanup() {
         try {
@@ -97,303 +229,26 @@ public class ShizukuUtils {
             Shizuku.removeBinderReceivedListener(binderReceivedListener);
             Shizuku.removeBinderDeadListener(binderDeadListener);
             isInitialized = false;
-            Log.i(TAG, "Shizuku cleanup completed");
+            Log.i(TAG, "Shizuku cleaned up");
         } catch (Exception e) {
-            Log.e(TAG, "Error during Shizuku cleanup", e);
+            Log.e(TAG, "Error during cleanup", e);
         }
     }
 
     /**
-     * Check if Shizuku is available and running
-     */
-    public boolean isShizukuAvailable() {
-        try {
-            return Shizuku.pingBinder();
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking Shizuku availability", e);
-            return false;
-        }
-    }
-
-    /**
-     * Check if we have Shizuku permission
-     */
-    public boolean hasShizukuPermission() {
-        if (!isShizukuAvailable()) {
-            return false;
-        }
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
-            }
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking Shizuku permission", e);
-            return false;
-        }
-    }
-
-    /**
-     * Request Shizuku permission
-     */
-    public void requestShizukuPermission() {
-        if (hasShizukuPermission()) {
-            Log.d(TAG, "Shizuku permission already granted");
-            return;
-        }
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE);
-                Log.i(TAG, "Shizuku permission requested");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error requesting Shizuku permission", e);
-        }
-    }
-
-    /**
-     * Execute shell command through Shizuku
-     */
-    public String executeShellCommand(String command) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for command: " + command);
-            return null;
-        }
-
-        try {
-            Log.d(TAG, "Executing command: " + command);
-            return Shizuku.newProcess(new String[]{"sh", "-c", command}, null, null)
-                    .waitFor().toString();
-        } catch (Exception e) {
-            Log.e(TAG, "Error executing shell command: " + command, e);
-            return null;
-        }
-    }
-
-    /**
-     * Execute shell command with result capture
-     */
-    public CommandResult executeShellCommandWithResult(String command) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for command: " + command);
-            return new CommandResult(-1, "No Shizuku permission", "");
-        }
-
-        try {
-            Log.d(TAG, "Executing command with result: " + command);
-            Process process = Shizuku.newProcess(new String[]{"sh", "-c", command}, null, null);
-
-            // Read output and error streams
-            StringBuilder output = new StringBuilder();
-            StringBuilder error = new StringBuilder();
-
-            // Create readers for the process streams
-            java.io.BufferedReader stdoutReader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream()));
-            java.io.BufferedReader stderrReader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getErrorStream()));
-
-            // Read the output stream
-            String line;
-            while ((line = stdoutReader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-
-            // Read the error stream
-            while ((line = stderrReader.readLine()) != null) {
-                error.append(line).append("\n");
-            }
-
-            // Wait for process completion
-            int exitCode = process.waitFor();
-
-            return new CommandResult(exitCode, output.toString(), error.toString());
-        } catch (Exception e) {
-            Log.e(TAG, "Error executing shell command with result: " + command, e);
-            return new CommandResult(-1, "", e.getMessage());
-        }
-    }
-
-    /**
-     * Install APK through Shizuku
-     */
-    public boolean installApk(String apkPath) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for APK installation");
-            return false;
-        }
-
-        try {
-            String command = "pm install -r \"" + apkPath + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0 && result.output.contains("Success");
-            Log.i(TAG, "APK installation " + (success ? "successful" : "failed") + ": " + apkPath);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error installing APK: " + apkPath, e);
-            return false;
-        }
-    }
-
-    /**
-     * Uninstall package through Shizuku
-     */
-    public boolean uninstallPackage(String packageName) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for package uninstallation");
-            return false;
-        }
-
-        try {
-            String command = "pm uninstall \"" + packageName + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0 && result.output.contains("Success");
-            Log.i(TAG, "Package uninstallation " + (success ? "successful" : "failed") + ": " + packageName);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error uninstalling package: " + packageName, e);
-            return false;
-        }
-    }
-
-    /**
-     * Grant permission to a package through Shizuku
-     */
-    public boolean grantPermission(String packageName, String permission) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for granting permissions");
-            return false;
-        }
-
-        try {
-            String command = "pm grant \"" + packageName + "\" \"" + permission + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0;
-            Log.i(TAG, "Permission grant " + (success ? "successful" : "failed") +
-                  ": " + permission + " to " + packageName);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error granting permission: " + permission + " to " + packageName, e);
-            return false;
-        }
-    }
-
-    /**
-     * Revoke permission from a package through Shizuku
-     */
-    public boolean revokePermission(String packageName, String permission) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for revoking permissions");
-            return false;
-        }
-
-        try {
-            String command = "pm revoke \"" + packageName + "\" \"" + permission + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0;
-            Log.i(TAG, "Permission revoke " + (success ? "successful" : "failed") +
-                  ": " + permission + " from " + packageName);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error revoking permission: " + permission + " from " + packageName, e);
-            return false;
-        }
-    }
-
-    /**
-     * Enable/disable a component through Shizuku
-     */
-    public boolean setComponentEnabled(String packageName, String componentName, boolean enabled) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for component management");
-            return false;
-        }
-
-        try {
-            String state = enabled ? "enable" : "disable";
-            String command = "pm " + state + " \"" + packageName + "/" + componentName + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0;
-            Log.i(TAG, "Component " + state + " " + (success ? "successful" : "failed") +
-                  ": " + componentName);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting component state: " + componentName, e);
-            return false;
-        }
-    }
-
-    /**
-     * Get system property through Shizuku
-     */
-    public String getSystemProperty(String property) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for system properties");
-            return null;
-        }
-
-        try {
-            String command = "getprop \"" + property + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            if (result.exitCode == 0) {
-                return result.output.trim();
-            }
-            return null;
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting system property: " + property, e);
-            return null;
-        }
-    }
-
-    /**
-     * Set system property through Shizuku
-     */
-    public boolean setSystemProperty(String property, String value) {
-        if (!hasShizukuPermission()) {
-            Log.w(TAG, "No Shizuku permission for setting system properties");
-            return false;
-        }
-
-        try {
-            String command = "setprop \"" + property + "\" \"" + value + "\"";
-            CommandResult result = executeShellCommandWithResult(command);
-            boolean success = result.exitCode == 0;
-            Log.i(TAG, "System property set " + (success ? "successful" : "failed") +
-                  ": " + property + " = " + value);
-            return success;
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting system property: " + property, e);
-            return false;
-        }
-    }
-
-    /**
-     * Result class for shell command execution
+     * Result class for command execution
      */
     public static class CommandResult {
-        public final int exitCode;
         public final String output;
         public final String error;
+        public final int exitCode;
+        public final boolean success;
 
-        public CommandResult(int exitCode, String output, String error) {
-            this.exitCode = exitCode;
+        public CommandResult(String output, String error, int exitCode) {
             this.output = output != null ? output : "";
             this.error = error != null ? error : "";
-        }
-
-        public boolean isSuccess() {
-            return exitCode == 0;
-        }
-
-        @Override
-        public String toString() {
-            return "CommandResult{" +
-                    "exitCode=" + exitCode +
-                    ", output='" + output + '\'' +
-                    ", error='" + error + '\'' +
-                    '}';
+            this.exitCode = exitCode;
+            this.success = exitCode == 0;
         }
     }
 }

@@ -1,0 +1,62 @@
+name: Auto-delete Branch After Merge
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-branch:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref != 'main' && github.event.pull_request.head.ref != 'develop'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Delete merged branch
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const branchName = context.payload.pull_request.head.ref;
+
+          try {
+            await github.rest.git.deleteRef({
+              owner,
+              repo,
+              ref: `heads/${branchName}`
+            });
+            console.log(`Successfully deleted branch: ${branchName}`);
+          } catch (error) {
+            console.log(`Failed to delete branch ${branchName}: ${error.message}`);
+          }
+
+  cleanup-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Delete old artifacts
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+
+          const artifacts = await github.rest.actions.listArtifactsForRepo({
+            owner,
+            repo,
+            per_page: 100
+          });
+
+          const oldArtifacts = artifacts.data.artifacts.filter(artifact => {
+            const createdDate = new Date(artifact.created_at);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            return createdDate < sevenDaysAgo;
+          });
+
+          for (const artifact of oldArtifacts) {
+            try {
+              await github.rest.actions.deleteArtifact({
+                owner,
+                repo,
+                artifact_id: artifact.id
+              });
+              console.log(`Deleted artifact: ${artifact.name}`);
+            } catch (error) {
+              console.log(`Failed to delete artifact ${artifact.name}: ${error.message}`);
+            }
+          }

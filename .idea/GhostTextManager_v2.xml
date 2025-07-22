@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GhostTextManager">
+    <option name="inputs">
+      <map>
+        <entry key="build project">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753154262158" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+        <entry key="check">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753153905827" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+        <entry key="fix errors">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753153751817" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+        <entry key="fix everything so build is successful">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753154562304" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+        <entry key="remove unneeded files">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753154485168" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+        <entry key="start development">
+          <value>
+            <GhostTextMetaData>
+              <option name="count" value="1.0" />
+              <option name="timestamps">
+                <list>
+                  <option value="1753153973274" />
+                </list>
+              </option>
+            </GhostTextMetaData>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

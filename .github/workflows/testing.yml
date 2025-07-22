@@ -1,0 +1,171 @@
+name: Automated Testing Suite
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+
+    - name: Run unit tests
+      run: ./gradlew test --continue
+
+    - name: Generate test report
+      run: ./gradlew testDebugUnitTest
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: unit-test-results
+        path: |
+          app/build/reports/tests/
+          app/build/test-results/
+
+  instrumentation-tests:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        api-level: [24, 28, 31, 34]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+
+    - name: AVD cache
+      uses: actions/cache@v3
+      id: avd-cache
+      with:
+        path: |
+          ~/.android/avd/*
+          ~/.android/adb*
+        key: avd-${{ matrix.api-level }}
+
+    - name: Create AVD and generate snapshot for caching
+      if: steps.avd-cache.outputs.cache-hit != 'true'
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: ${{ matrix.api-level }}
+        force-avd-creation: false
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: false
+        script: echo "Generated AVD snapshot for caching."
+
+    - name: Run instrumentation tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: ${{ matrix.api-level }}
+        script: ./gradlew connectedCheck
+
+    - name: Upload instrumentation test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: instrumentation-test-results-api-${{ matrix.api-level }}
+        path: |
+          app/build/reports/androidTests/
+          app/build/outputs/androidTest-results/
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run performance benchmarks
+      run: |
+        ./gradlew assembleDebugAndroidTest
+        ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.anti.rootadbcontroller.PerformanceTest
+
+    - name: Generate performance report
+      run: ./gradlew createDebugCoverageReport
+
+    - name: Upload performance data
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: app/build/reports/coverage/
+
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run security vulnerability scan
+      run: ./gradlew dependencyCheckAnalyze
+
+    - name: Run static security analysis
+      run: |
+        ./gradlew detekt
+        ./gradlew ktlintCheck
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          build/reports/dependency-check-report.html
+          app/build/reports/detekt/
+          app/build/reports/ktlint/
+
+  test-summary:
+    needs: [unit-tests, instrumentation-tests, performance-tests, security-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate comprehensive test report
+      run: |
+        echo "# Test Summary Report" > test-summary.md
+        echo "## Unit Tests" >> test-summary.md
+        echo "## Instrumentation Tests" >> test-summary.md
+        echo "## Performance Tests" >> test-summary.md
+        echo "## Security Tests" >> test-summary.md
+
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: comprehensive-test-summary
+        path: test-summary.md
