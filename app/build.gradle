@@ -8,6 +8,10 @@ android {
     namespace = 'com.anti.rootadbcontroller'
     compileSdk = 34
 
+    sourceSets {
+        main.java.srcDirs = ['src/main/java']
+    }
+
     defaultConfig {
         applicationId "com.anti.rootadbcontroller"
         minSdk = 21

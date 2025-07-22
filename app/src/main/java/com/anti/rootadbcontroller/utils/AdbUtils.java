@@ -99,248 +99,101 @@ public class AdbUtils {
                     "setprop service.adb.tcp.port " + port);
 
             if (result.isSuccess()) {
-                // Restart ADB to apply changes
                 shizukuUtils.executeShellCommandWithResult("stop adbd");
                 shizukuUtils.executeShellCommandWithResult("start adbd");
-                Log.d(TAG, "Enabled ADB over TCP using Shizuku on port " + port);
+                Log.i(TAG, "ADB over TCP enabled on port " + port + " using Shizuku");
                 return;
             }
         }
 
-        // Fall back to root method if Shizuku fails or is not available
+        // Fallback to root if Shizuku is not available
         if (RootUtils.isRootAvailable()) {
-            String response = executeCommand("setprop service.adb.tcp.port " + port);
+            executeCommand("setprop service.adb.tcp.port " + port);
             executeCommand("stop adbd");
             executeCommand("start adbd");
-            Log.d(TAG, "Enabled ADB over TCP using root on port " + port + ": " + response);
-            return;
+            Log.i(TAG, "ADB over TCP enabled on port " + port + " using root");
+        } else {
+            Log.w(TAG, "Cannot enable ADB over TCP: Neither Shizuku nor root access is available.");
         }
-
-        // If all else fails, try to use regular shell (might not work)
-        Log.w(TAG, "Enabling ADB over TCP without root or Shizuku may not work");
-        executeCommand("setprop service.adb.tcp.port " + port);
-        executeCommand("stop adbd");
-        executeCommand("start adbd");
     }
 
     /**
      * Disable ADB over TCP/IP
      */
     public static void disableAdbOverTcp() throws IOException, InterruptedException {
-        // Try to use Shizuku first if available
         ShizukuUtils shizukuUtils = ShizukuUtils.getInstance();
         if (shizukuUtils.isShizukuAvailable() && shizukuUtils.hasShizukuPermission()) {
-            CommandResult result = shizukuUtils.executeShellCommandWithResult(
-                    "setprop service.adb.tcp.port -1");
-
-            if (result.isSuccess()) {
-                // Restart ADB to apply changes
-                shizukuUtils.executeShellCommandWithResult("stop adbd");
-                shizukuUtils.executeShellCommandWithResult("start adbd");
-                Log.d(TAG, "Disabled ADB over TCP using Shizuku");
-                return;
-            }
-        }
-
-        // Fall back to root method if Shizuku fails or is not available
-        if (RootUtils.isRootAvailable()) {
-            String response = executeCommand("setprop service.adb.tcp.port -1");
-            executeCommand("stop adbd");
-            executeCommand("start adbd");
-            Log.d(TAG, "Disabled ADB over TCP using root: " + response);
+            shizukuUtils.executeShellCommandWithResult("setprop service.adb.tcp.port -1");
+            shizukuUtils.executeShellCommandWithResult("stop adbd");
+            shizukuUtils.executeShellCommandWithResult("start adbd");
+            Log.i(TAG, "ADB over TCP disabled using Shizuku");
             return;
         }
 
-        // If all else fails, try to use regular shell (might not work)
-        Log.w(TAG, "Disabling ADB over TCP without root or Shizuku may not work");
-        executeCommand("setprop service.adb.tcp.port -1");
-        executeCommand("stop adbd");
-        executeCommand("start adbd");
+        if (RootUtils.isRootAvailable()) {
+            executeCommand("setprop service.adb.tcp.port -1");
+            executeCommand("stop adbd");
+            executeCommand("start adbd");
+            Log.i(TAG, "ADB over TCP disabled using root");
+        } else {
+            Log.w(TAG, "Cannot disable ADB over TCP: Neither Shizuku nor root access is available.");
+        }
     }
 
     /**
      * Get the device's IP address
-     *
-     * @param context The application context
-     * @return The device's IP address or null if not available
      */
     public static String getDeviceIpAddress(Context context) {
-        // Try to get Wi-Fi IP address first
-        String wifiIp = getWifiIpAddress(context);
-        if (wifiIp != null && !wifiIp.isEmpty() && !wifiIp.equals("0.0.0.0")) {
-            return wifiIp;
-        }
-
-        // Try to get mobile data IP address
-        String mobileIp = getMobileIpAddress();
-        if (mobileIp != null && !mobileIp.isEmpty() && !mobileIp.equals("0.0.0.0")) {
-            return mobileIp;
-        }
-
-        // If all else fails, try to get any available IP
-        return getAnyIpAddress();
-    }
-
-    /**
-     * Get the Wi-Fi IP address
-     */
-    private static String getWifiIpAddress(Context context) {
-        try {
-            WifiManager wifiManager = (WifiManager) context.getApplicationContext()
-                    .getSystemService(Context.WIFI_SERVICE);
-            if (wifiManager == null) {
-                return null;
-            }
-
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager != null) {
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-            if (wifiInfo == null) {
-                return null;
+            if (wifiInfo != null) {
+                int ipAddress = wifiInfo.getIpAddress();
+                if (ipAddress != 0) {
+                    return (ipAddress & 0xFF) + "." +
+                           ((ipAddress >> 8) & 0xFF) + "." +
+                           ((ipAddress >> 16) & 0xFF) + "." +
+                           ((ipAddress >> 24) & 0xFF);
+                }
             }
-
-            int ipInt = wifiInfo.getIpAddress();
-            return String.format("%d.%d.%d.%d",
-                    (ipInt & 0xff), (ipInt >> 8 & 0xff),
-                    (ipInt >> 16 & 0xff), (ipInt >> 24 & 0xff));
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting Wi-Fi IP address", e);
-            return null;
         }
+        return getIpAddressFromNetworkInterfaces();
     }
 
-    /**
-     * Get the mobile data IP address
-     */
-    private static String getMobileIpAddress() {
+    private static String getIpAddressFromNetworkInterfaces() {
         try {
-            // Iterate through network interfaces
-            for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!networkInterface.isUp() || networkInterface.isLoopback()) {
-                    continue;
-                }
-
-                String name = networkInterface.getName();
-                if (name.startsWith("rmnet") || name.startsWith("pdp") || name.startsWith("ppp") ||
-                        name.startsWith("data") || name.startsWith("wwan")) {
-
-                    for (Enumeration<InetAddress> addresses = networkInterface.getInetAddresses(); addresses.hasMoreElements();) {
-                        InetAddress address = addresses.nextElement();
-                        if (!address.isLoopbackAddress() && address instanceof Inet4Address) {
-                            return address.getHostAddress();
-                        }
+            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+                NetworkInterface intf = en.nextElement();
+                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
+                        return inetAddress.getHostAddress();
                     }
                 }
             }
-        } catch (SocketException e) {
-            Log.e(TAG, "Error getting mobile IP address", e);
+        } catch (SocketException ex) {
+            Log.e(TAG, "Failed to get IP address from network interfaces", ex);
         }
-
         return null;
     }
 
-    /**
-     * Get any available IP address
-     */
-    private static String getAnyIpAddress() {
-        try {
-            // Iterate through all network interfaces
-            for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!networkInterface.isUp() || networkInterface.isLoopback()) {
-                    continue;
-                }
+    public static ShizukuUtils.CommandResult readProcessOutput(Process process) throws IOException, InterruptedException {
+        StringBuilder output = new StringBuilder();
+        StringBuilder error = new StringBuilder();
 
-                for (Enumeration<InetAddress> addresses = networkInterface.getInetAddresses(); addresses.hasMoreElements();) {
-                    InetAddress address = addresses.nextElement();
-                    if (!address.isLoopbackAddress() && address instanceof Inet4Address) {
-                        return address.getHostAddress();
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            Log.e(TAG, "Error getting any IP address", e);
+        BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+
+        String s;
+        while ((s = stdInput.readLine()) != null) {
+            output.append(s).append("\n");
         }
 
-        return null;
-    }
-
-    /**
-     * Check if the device has an internet connection
-     *
-     * @param context The application context
-     * @return True if the device has an internet connection, false otherwise
-     */
-    public static boolean hasInternetConnection(Context context) {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) {
-            return false;
+        while ((s = stdError.readLine()) != null) {
+            error.append(s).append("\n");
         }
 
-        Network activeNetwork = cm.getActiveNetwork();
-        if (activeNetwork == null) {
-            return false;
-        }
-
-        NetworkCapabilities capabilities = cm.getNetworkCapabilities(activeNetwork);
-        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-    }
-
-    /**
-     * Check if ADB over TCP is enabled
-     *
-     * @return True if ADB over TCP is enabled, false otherwise
-     */
-    public static boolean isAdbOverTcpEnabled() {
-        try {
-            ShizukuUtils shizukuUtils = ShizukuUtils.getInstance();
-            if (shizukuUtils.isShizukuAvailable() && shizukuUtils.hasShizukuPermission()) {
-                CommandResult result = shizukuUtils.executeShellCommandWithResult(
-                        "getprop service.adb.tcp.port");
-
-                String port = result.output.trim();
-                return port != null && !port.isEmpty() && !port.equals("-1");
-            }
-
-            if (RootUtils.isRootAvailable()) {
-                String response = executeCommand("getprop service.adb.tcp.port");
-                String port = response.trim();
-                return port != null && !port.isEmpty() && !port.equals("-1");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking ADB over TCP status", e);
-        }
-
-        return false;
-    }
-
-    /**
-     * Get the current ADB over TCP port
-     *
-     * @return The current ADB over TCP port or -1 if not enabled
-     */
-    public static int getAdbOverTcpPort() {
-        try {
-            ShizukuUtils shizukuUtils = ShizukuUtils.getInstance();
-            if (shizukuUtils.isShizukuAvailable() && shizukuUtils.hasShizukuPermission()) {
-                CommandResult result = shizukuUtils.executeShellCommandWithResult(
-                        "getprop service.adb.tcp.port");
-
-                String port = result.output.trim();
-                if (port != null && !port.isEmpty() && !port.equals("-1")) {
-                    return Integer.parseInt(port);
-                }
-                return -1;
-            }
-
-            if (RootUtils.isRootAvailable()) {
-                String response = executeCommand("getprop service.adb.tcp.port");
-                String port = response.trim();
-                if (port != null && !port.isEmpty() && !port.equals("-1")) {
-                    return Integer.parseInt(port);
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting ADB over TCP port", e);
-        }
-
-        return -1;
+        process.waitFor();
+        return new ShizukuUtils.CommandResult(process.exitValue() == 0, output.toString(), error.toString(), process.exitValue());
     }
 }

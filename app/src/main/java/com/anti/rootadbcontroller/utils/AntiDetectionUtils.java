@@ -100,73 +100,44 @@ public class AntiDetectionUtils {
      * Check telephony for emulator characteristics
      */
     private static boolean checkTelephony(Context context) {
-        try {
-            TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            if (tm != null) {
-                String networkOperator = tm.getNetworkOperatorName();
-                return "Android".equals(networkOperator);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking telephony", e);
-        }
-        return false;
+        TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        if (tm == null) return false;
+        String networkOperator = tm.getNetworkOperatorName();
+        return "Android".equalsIgnoreCase(networkOperator);
     }
 
     /**
-     * Check if debugger is attached
+     * Check if a debugger is attached
      */
-    private static boolean checkDebugger() {
-        return android.os.Debug.isDebuggerConnected() ||
-               android.os.Debug.waitingForDebugger();
+    public static boolean checkDebugger() {
+        return android.os.Debug.isDebuggerConnected();
     }
 
     /**
-     * Check sensor availability (emulators often lack proper sensors)
-     * This method checks for specific sensors that are commonly missing in emulators
-     * but present in real devices
+     * Check for the presence of sensors, which are often missing in emulators
      */
     private static boolean checkSensors(Context context) {
-        try {
-            android.hardware.SensorManager sm = (android.hardware.SensorManager)
-                context.getSystemService(Context.SENSOR_SERVICE);
-            if (sm != null) {
-                // Check for specific sensors that are typically present in real devices
-                // but often missing or improperly implemented in emulators
-                boolean hasAccelerometer = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER) != null;
-                boolean hasGyroscope = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null;
-                boolean hasProximity = sm.getDefaultSensor(android.hardware.Sensor.TYPE_PROXIMITY) != null;
-
-                // Most real devices have at least accelerometer and proximity sensors
-                // If both are missing, it's likely an emulator
-                return !hasAccelerometer && !hasProximity;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking sensors", e);
-        }
-        return false;
+        android.hardware.SensorManager sm = (android.hardware.SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        return sm != null && !sm.getSensorList(android.hardware.Sensor.TYPE_ALL).isEmpty();
     }
 
     /**
-     * Detect analysis tools and security apps
+     * Detect common analysis tools and frameworks
+     * @param context Application context
+     * @return true if an analysis tool is detected
      */
-    public static boolean hasAnalysisTools(Context context) {
-        String[] analysisApps = {
-            // Removed Play Store as it's a legitimate app, not an analysis tool
-            "de.robv.android.xposed.installer", // Xposed
-            "com.topjohnwu.magisk", // Magisk
-            "eu.chainfire.supersu", // SuperSU
-            "com.noshufou.android.su", // Superuser
-            "com.koushikdutta.superuser",
-            "com.zachspong.temprootremovejb",
-            "com.ramdroid.appquarantine",
-            "com.android.vending.billing.InAppBillingService.COIN"
-        };
-
+    public static boolean detectAnalysisTools(Context context) {
+        List<String> analysisPackages = Arrays.asList(
+            "de.robv.android.xposed.installer",
+            "io.va.exposed",
+            "com.saurik.substrate",
+            "com.topjohnwu.magisk"
+        );
         PackageManager pm = context.getPackageManager();
-        for (String app : analysisApps) {
+        for (String packageName : analysisPackages) {
             try {
-                pm.getPackageInfo(app, 0);
-                Log.d(TAG, "Found analysis tool: " + app);
+                pm.getPackageInfo(packageName, 0);
+                Log.w(TAG, "Detected analysis tool: " + packageName);
                 return true;
             } catch (PackageManager.NameNotFoundException ignored) {}
         }
@@ -174,88 +145,24 @@ public class AntiDetectionUtils {
     }
 
     /**
-     * Check for USB debugging and development settings
+     * Perform anti-forensics by clearing logs
+     */
+    public static void clearLogs() {
+        try {
+            Runtime.getRuntime().exec("logcat -c");
+            Log.i(TAG, "Cleared application logs to hinder analysis.");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to clear logs", e);
+        }
+    }
+
+    /**
+     * Check if the device is in developer mode
+     * @param context Application context
+     * @return true if developer mode is enabled
      */
     public static boolean isDeveloperModeEnabled(Context context) {
-        try {
-            int adbEnabled = Settings.Secure.getInt(context.getContentResolver(),
-                Settings.Secure.ADB_ENABLED, 0);
-            int devEnabled = Settings.Global.getInt(context.getContentResolver(),
-                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0);
-
-            return adbEnabled == 1 || devEnabled == 1;
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking developer mode", e);
-            return false;
-        }
-    }
-
-    /**
-     * Anti-forensics: Clear app traces and logs
-     * This method clears temporary files and caches but preserves essential settings
-     */
-    public static void clearTraces(Context context) {
-        try {
-            // Clear app cache
-            File cacheDir = context.getCacheDir();
-            deleteRecursively(cacheDir);
-
-            // Clear external cache
-            File externalCache = context.getExternalCacheDir();
-            if (externalCache != null) {
-                deleteRecursively(externalCache);
-            }
-
-            // Don't clear shared preferences as they contain essential app settings
-            // Instead, we could selectively clear specific non-essential preferences if needed
-            // For example:
-            // SharedPreferences prefs = context.getSharedPreferences("non_essential_prefs", Context.MODE_PRIVATE);
-            // prefs.edit().clear().apply();
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error clearing traces", e);
-        }
-    }
-
-    /**
-     * Recursively delete directory contents
-     */
-    private static void deleteRecursively(File file) {
-        if (file != null && file.exists()) {
-            if (file.isDirectory()) {
-                File[] children = file.listFiles();
-                if (children != null) {
-                    for (File child : children) {
-                        deleteRecursively(child);
-                    }
-                }
-            }
-            file.delete();
-        }
-    }
-
-    /**
-     * Detect if app is being analyzed
-     * This method uses a more nuanced approach to determine if the app is likely
-     * being analyzed in a security testing environment
-     */
-    public static boolean isBeingAnalyzed(Context context) {
-        // Count the number of suspicious indicators
-        int suspiciousFactors = 0;
-
-        if (isEmulator(context)) suspiciousFactors++;
-        if (hasAnalysisTools(context)) suspiciousFactors++;
-        if (checkDebugger()) suspiciousFactors++;
-
-        // Developer mode alone is not a strong indicator of analysis
-        // Many legitimate users and developers have it enabled
-        // We'll only count it if other factors are also present
-        if (isDeveloperModeEnabled(context) && suspiciousFactors > 0) {
-            suspiciousFactors++;
-        }
-
-        // Consider the app being analyzed if at least two suspicious factors are detected
-        // This reduces false positives while still catching most analysis environments
-        return suspiciousFactors >= 2;
+        return Settings.Secure.getInt(context.getContentResolver(),
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0;
     }
 }

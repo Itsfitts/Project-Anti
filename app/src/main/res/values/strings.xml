@@ -1,4 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Root ADB Controller</string>
+    <string name="root_status">Root Status:</string>
+    <string name="shizuku_status">Shizuku Status:</string>
+    <string name="root_available">Root Available</string>
+    <string name="root_not_available">Root Not Available</string>
+    <string name="shizuku_available">Shizuku Available</string>
+    <string name="shizuku_not_available">Shizuku Not Available</string>
+    <string name="request_shizuku_permission">Request Permission</string>
+    <string name="automation_settings">Automation Settings</string>
+    <string name="feature_keylogging">Keylogging</string>
+    <string name="feature_data_exfiltration">Data Exfiltration</string>
+    <string name="feature_silent_install">Silent Install</string>
+    <string name="feature_network_monitor">Network Monitor</string>
+    <string name="feature_file_access">File Access</string>
+    <string name="feature_system_control">System Control</string>
+    <string name="feature_screenshot">Screenshot</string>
+    <string name="feature_log_access">Log Access</string>
+    <string name="feature_mic_recorder">Mic Recorder</string>
+    <string name="feature_location_tracker">Location Tracker</string>
+    <string name="feature_overlay_attack">Overlay Attack</string>
+    <string name="feature_hide_app_icon">Hide App Icon</string>
+    <string name="feature_permissions_scanner">Permissions Scanner</string>
+    <string name="feature_overlay_detector">Overlay Detector</string>
+    <string name="feature_hidden_app_finder">Hidden App Finder</string>
+    <string name="feature_camera_mic_detector">Camera/Mic Detector</string>
+    <string name="feature_stealth_camera">Stealth Camera</string>
+    <string name="feature_get_clipboard">Get Clipboard</string>
+    <string name="feature_set_clipboard">Set Clipboard</string>
+    <string name="feature_shizuku_operations">Shizuku Operations</string>
+    <string name="feature_package_manager">Package Manager</string>
+    <string name="feature_system_properties">System Properties</string>
+    <string name="feature_remote_adb">Remote ADB</string>
+    <string name="feature_automation_settings">Automation Settings</string>
+    <string name="clipboard_pwned_text">You have been pwned!</string>
+    <string name="automation_dialog_title">Automation Settings</string>
+    <string name="automation_dialog_save">Save</string>
+    <string name="automation_dialog_cancel">Cancel</string>
 </resources>

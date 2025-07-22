@@ -87,10 +87,12 @@ public class AutomationUtils {
             // Auto System Info
             if (prefs.getBoolean(KEY_AUTO_SYSTEM_INFO, false)) {
                 if (service != null) {
-                    service.getDeviceInfoAsync(new ShizukuCallbacks.CommandCallback() {
+                    service.getSystemInfo(new ShizukuCallbacks.SystemOperationCallback() {
                         @Override
-                        public void onResult(ShizukuUtils.CommandResult result) {
-                            saveToFile(context, "system_info.txt", result.output);
+                        public void onSystemOperationResult(boolean success, String operation, String result) {
+                            if (success) {
+                                saveToFile(context, "system_info.txt", result);
+                            }
                         }
                     });
                 }
@@ -99,10 +101,12 @@ public class AutomationUtils {
             // Auto Package List
             if (prefs.getBoolean(KEY_AUTO_PACKAGE_LIST, false)) {
                 if (service != null) {
-                    service.getInstalledPackagesAsync(new ShizukuCallbacks.CommandCallback() {
+                    service.listPackages(true, new ShizukuCallbacks.SystemOperationCallback() {
                         @Override
-                        public void onResult(ShizukuUtils.CommandResult result) {
-                            saveToFile(context, "package_list.txt", result.output);
+                        public void onSystemOperationResult(boolean success, String operation, String result) {
+                            if (success) {
+                                saveToFile(context, "package_list.txt", result);
+                            }
                         }
                     });
                 }
@@ -111,10 +115,12 @@ public class AutomationUtils {
             // Auto Network Info
             if (prefs.getBoolean(KEY_AUTO_NETWORK_INFO, false)) {
                 if (service != null) {
-                    service.executeCommandAsync("ip addr && netstat -tunap", new ShizukuCallbacks.CommandCallback() {
+                    service.performNetworkOperation("netstat", new ShizukuCallbacks.NetworkCallback() {
                         @Override
-                        public void onResult(ShizukuUtils.CommandResult result) {
-                            saveToFile(context, "network_info.txt", result.output);
+                        public void onNetworkResult(boolean success, String data) {
+                            if (success) {
+                                saveToFile(context, "network_info.txt", data);
+                            }
                         }
                     });
                 }
@@ -122,83 +128,64 @@ public class AutomationUtils {
         });
     }
 
-    /**
-     * Start Remote ADB service
-     */
     private static void startRemoteAdbService(Context context) {
-        Log.d(TAG, "Auto-starting Remote ADB service");
-        Intent serviceIntent = new Intent(context, RemoteAdbService.class);
-
+        Intent intent = new Intent(context, RemoteAdbService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent);
+            context.startForegroundService(intent);
         } else {
-            context.startService(serviceIntent);
+            context.startService(intent);
         }
+        Log.i(TAG, "Started RemoteAdbService for automation.");
     }
 
-    /**
-     * Collect system information using root commands
-     */
     private static void collectSystemInfo(Context context) {
-        Log.d(TAG, "Auto-collecting system information (root)");
-
-        List<String> commands = new ArrayList<>();
-        commands.add("getprop");
-        commands.add("cat /proc/cpuinfo");
-        commands.add("cat /proc/meminfo");
-        commands.add("dumpsys battery");
-
-        RootUtils.executeRootCommands(commands, output -> {
-            saveToFile(context, "system_info.txt", String.join("\n", output));
-        });
-    }
-
-    /**
-     * Collect package list using root commands
-     */
-    private static void collectPackageList(Context context) {
-        Log.d(TAG, "Auto-collecting package list (root)");
-
-        RootUtils.executeRootCommand("pm list packages -f", output -> {
-            saveToFile(context, "package_list.txt", String.join("\n", output));
-        });
-    }
-
-    /**
-     * Collect network information using root commands
-     */
-    private static void collectNetworkInfo(Context context) {
-        Log.d(TAG, "Auto-collecting network information (root)");
-
-        List<String> commands = new ArrayList<>();
-        commands.add("ip addr");
-        commands.add("netstat -tunap");
-        commands.add("cat /proc/net/route");
-
-        RootUtils.executeRootCommands(commands, output -> {
-            saveToFile(context, "network_info.txt", String.join("\n", output));
-        });
-    }
-
-    /**
-     * Save data to a file in Downloads directory
-     */
-    private static void saveToFile(Context context, String fileName, String data) {
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File file = new File(downloadsDir, fileName);
-
-        try {
-            if (!downloadsDir.exists()) {
-                downloadsDir.mkdirs();
+        executor.execute(() -> {
+            try {
+                String props = AdbUtils.executeCommand("getprop");
+                saveToFile(context, "system_info_root.txt", props);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to collect system info with root", e);
             }
+        });
+    }
 
-            FileWriter writer = new FileWriter(file);
-            writer.write(data);
-            writer.close();
+    private static void collectPackageList(Context context) {
+        executor.execute(() -> {
+            try {
+                String packages = AdbUtils.executeCommand("pm list packages -f");
+                saveToFile(context, "package_list_root.txt", packages);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to collect package list with root", e);
+            }
+        });
+    }
 
-            Log.d(TAG, "Successfully saved data to " + file.getAbsolutePath());
+    private static void collectNetworkInfo(Context context) {
+        executor.execute(() -> {
+            try {
+                String netstat = AdbUtils.executeCommand("netstat -tuln");
+                saveToFile(context, "network_info_root.txt", netstat);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to collect network info with root", e);
+            }
+        });
+    }
+
+    private static void saveToFile(Context context, String fileName, String content) {
+        File dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+        if (dir == null) {
+            Log.e(TAG, "Failed to get external files directory.");
+            return;
+        }
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        File file = new File(dir, fileName);
+        try (FileWriter writer = new FileWriter(file, true)) { // Append mode
+            writer.append(content).append("\n\n");
+            Log.i(TAG, "Saved data to " + file.getAbsolutePath());
         } catch (IOException e) {
-            Log.e(TAG, "Failed to save data to file " + fileName, e);
+            Log.e(TAG, "Failed to save data to file: " + fileName, e);
         }
     }
 

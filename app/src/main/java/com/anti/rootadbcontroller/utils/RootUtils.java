@@ -97,39 +97,37 @@ public class RootUtils {
         executeRootCommand(command, callback);
     }
 
-
-
     /**
-     * Takes a screenshot and saves it to the specified file path.
-     * @param outputPath The path where the screenshot will be saved.
+     * Reboots the device.
      * @param callback A callback to handle the result.
      */
-    public static void takeScreenshot(String outputPath, CommandCallback callback) {
-        String command = "screencap -p " + outputPath;
-        executeRootCommand(command, callback);
+    public static void rebootDevice(CommandCallback callback) {
+        executeRootCommand("reboot", callback);
     }
 
     /**
-     * Retrieves the system logs (logcat) from the device.
-     * @param callback A callback to receive the logs or any errors.
+     * Takes a screenshot and saves it to the specified path.
+     * @param path The path to save the screenshot.
+     * @param callback A callback to handle the result.
      */
-    public static void getSystemLogs(CommandCallback callback) {
-        String command = "logcat -d";
+    public static void takeScreenshot(String path, CommandCallback callback) {
+        String command = "screencap -p " + path;
         executeRootCommand(command, callback);
     }
 
     /**
-     * An interface for handling the results of a command execution, including both success and failure cases.
+     * A callback interface for handling the results of root command execution.
      */
     public interface CommandCallback {
         /**
          * Called when the command executes successfully.
-         * @param output A list of strings representing the output of the command.
+         * @param output The output of the command.
          */
         void onSuccess(List<String> output);
+
         /**
          * Called when the command fails to execute.
-         * @param error A string describing the error that occurred.
+         * @param error The error message.
          */
         void onFailure(String error);
     }

@@ -163,7 +163,7 @@ public class ShizukuManagerService extends Service {
     /**
      * Advanced system operations
      */
-    public void performSystemOperation(SystemOperation operation, SystemOperationCallback callback) {
+    public void performSystemOperation(ShizukuCallbacks.SystemOperation operation, SystemOperationCallback callback) {
         if (executor != null) {
             executor.execute(() -> {
                 boolean success = false;
@@ -201,21 +201,24 @@ public class ShizukuManagerService extends Service {
                         result = success ? cmdResult.output : "Failed to get app info";
                         break;
 
-                    case CUSTOM_COMMAND:
-                        cmdResult = shizukuUtils.executeShellCommandWithResult(operation.customCommand);
-                        success = cmdResult.isSuccess();
-                        result = cmdResult.output;
-                        break;
-
                     case SET_SYSTEM_PROPERTY:
-                        success = shizukuUtils.setSystemProperty(operation.property, operation.value);
-                        result = success ? "Property set: " + operation.property + "=" + operation.value : "Failed to set property";
+                        cmdResult = shizukuUtils.executeShellCommandWithResult(
+                            "setprop " + operation.property + " " + operation.value);
+                        success = cmdResult.isSuccess();
+                        result = success ? "Property set successfully" : "Failed to set property";
                         break;
 
                     case GET_SYSTEM_PROPERTY:
-                        String propValue = shizukuUtils.getSystemProperty(operation.property);
-                        success = propValue != null;
-                        result = success ? propValue : "Failed to get property";
+                        cmdResult = shizukuUtils.executeShellCommandWithResult(
+                            "getprop " + operation.property);
+                        success = cmdResult.isSuccess();
+                        result = success ? cmdResult.output : "Failed to get property";
+                        break;
+
+                    case CUSTOM_COMMAND:
+                        cmdResult = shizukuUtils.executeShellCommandWithResult(operation.customCommand);
+                        success = cmdResult.isSuccess();
+                        result = success ? cmdResult.output : "Command execution failed";
                         break;
                 }
 
@@ -227,39 +230,128 @@ public class ShizukuManagerService extends Service {
     }
 
     /**
-     * Get list of installed packages
+     * Get system information
      */
-    public void getInstalledPackagesAsync(CommandCallback callback) {
+    public void getSystemInfo(SystemOperationCallback callback) {
         if (executor != null) {
             executor.execute(() -> {
-                ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult("pm list packages");
+                StringBuilder info = new StringBuilder();
+
+                // Get Android version
+                ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.release");
+                if (result.isSuccess()) {
+                    info.append("Android Version: ").append(result.output.trim()).append("\n");
+                }
+
+                // Get device model
+                result = shizukuUtils.executeShellCommandWithResult("getprop ro.product.model");
+                if (result.isSuccess()) {
+                    info.append("Device Model: ").append(result.output.trim()).append("\n");
+                }
+
+                // Get SDK level
+                result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.sdk");
+                if (result.isSuccess()) {
+                    info.append("SDK Level: ").append(result.output.trim()).append("\n");
+                }
+
                 if (callback != null) {
-                    callback.onResult(result);
+                    callback.onSystemOperationResult(true, "GET_SYSTEM_INFO", info.toString());
                 }
             });
         }
     }
 
     /**
-     * Get device information
+     * List installed packages
      */
-    public void getDeviceInfoAsync(CommandCallback callback) {
+    public void listPackages(boolean includeSystem, SystemOperationCallback callback) {
         if (executor != null) {
             executor.execute(() -> {
-                StringBuilder deviceInfo = new StringBuilder();
+                String command = includeSystem ? "pm list packages" : "pm list packages -3";
+                ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult(command);
 
-                String model = shizukuUtils.getSystemProperty("ro.product.model");
-                String manufacturer = shizukuUtils.getSystemProperty("ro.product.manufacturer");
-                String version = shizukuUtils.getSystemProperty("ro.build.version.release");
-                String buildId = shizukuUtils.getSystemProperty("ro.build.id");
-
-                deviceInfo.append("Device: ").append(manufacturer).append(" ").append(model).append("\n");
-                deviceInfo.append("Android Version: ").append(version).append("\n");
-                deviceInfo.append("Build ID: ").append(buildId).append("\n");
-
-                ShizukuUtils.CommandResult result = new ShizukuUtils.CommandResult(0, deviceInfo.toString(), "");
                 if (callback != null) {
-                    callback.onResult(result);
+                    callback.onSystemOperationResult(result.isSuccess(), "LIST_PACKAGES",
+                        result.isSuccess() ? result.output : "Failed to list packages");
+                }
+            });
+        }
+    }
+
+    /**
+     * File operations via Shizuku
+     */
+    public void performFileOperation(String filePath, String operation, FileOperationCallback callback) {
+        if (executor != null) {
+            executor.execute(() -> {
+                boolean success = false;
+                String command = "";
+
+                switch (operation.toLowerCase()) {
+                    case "read":
+                        command = "cat " + filePath;
+                        break;
+                    case "delete":
+                        command = "rm " + filePath;
+                        break;
+                    case "list":
+                        command = "ls -la " + filePath;
+                        break;
+                    case "copy":
+                        // For copy operations, filePath should contain source and destination
+                        command = "cp " + filePath;
+                        break;
+                    default:
+                        command = operation + " " + filePath;
+                        break;
+                }
+
+                ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult(command);
+                success = result.isSuccess();
+
+                if (callback != null) {
+                    callback.onFileOperationResult(success, filePath, operation);
+                }
+            });
+        }
+    }
+
+    /**
+     * Network operations
+     */
+    public void performNetworkOperation(String operation, NetworkCallback callback) {
+        if (executor != null) {
+            executor.execute(() -> {
+                boolean success = false;
+                String data = "";
+
+                switch (operation.toLowerCase()) {
+                    case "netstat":
+                        ShizukuUtils.CommandResult result = shizukuUtils.executeShellCommandWithResult("netstat -tuln");
+                        success = result.isSuccess();
+                        data = success ? result.output : "Failed to get network connections";
+                        break;
+
+                    case "ifconfig":
+                        result = shizukuUtils.executeShellCommandWithResult("ip addr");
+                        success = result.isSuccess();
+                        data = success ? result.output : "Failed to get network interfaces";
+                        break;
+
+                    case "ping":
+                        result = shizukuUtils.executeShellCommandWithResult("ping -c 4 8.8.8.8");
+                        success = result.isSuccess();
+                        data = success ? result.output : "Ping failed";
+                        break;
+
+                    default:
+                        data = "Unknown network operation: " + operation;
+                        break;
+                }
+
+                if (callback != null) {
+                    callback.onNetworkResult(success, data);
                 }
             });
         }

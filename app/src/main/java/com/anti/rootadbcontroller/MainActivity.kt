@@ -39,6 +39,11 @@ class MainActivity : ComponentActivity() {
     private var showAutomationDialog by mutableStateOf(false)
     private lateinit var featureHandler: FeatureHandler
 
+    // Add missing componentName property
+    private val componentName by lazy {
+        ComponentName(this, MainActivity::class.java)
+    }
+
     // Shizuku service connection
     private val shizukuServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {

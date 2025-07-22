@@ -50,6 +50,20 @@ public class ShizukuCallbacks {
     }
 
     /**
+     * Callback for file operations
+     */
+    public interface FileOperationCallback {
+        void onFileOperationResult(boolean success, String filePath, String operation);
+    }
+
+    /**
+     * Callback for network operations
+     */
+    public interface NetworkCallback {
+        void onNetworkResult(boolean success, String data);
+    }
+
+    /**
      * System operation types and data
      */
     public static class SystemOperation {

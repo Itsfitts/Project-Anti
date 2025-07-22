@@ -3,6 +3,7 @@ package com.anti.rootadbcontroller.features
 import android.app.ActivityManager
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -276,9 +277,9 @@ class FeatureHandler(private val context: Context) {
         }
 
         // Get list of installed packages
-        shizukuManagerService.getInstalledPackagesAsync { result ->
-            if (result.isSuccess) {
-                saveDataToFile("installed_packages.txt", result.output)
+        shizukuManagerService.listPackages(true) { success, operation, result ->
+            if (success) {
+                saveDataToFile("installed_packages.txt", result)
                 Log.i(TAG, "Package list saved")
             }
         }
@@ -294,57 +295,19 @@ class FeatureHandler(private val context: Context) {
         }
 
         // Get device information
-        shizukuManagerService.getDeviceInfoAsync { result ->
-            if (result.isSuccess) {
-                saveDataToFile("device_info.txt", result.output)
-                Log.i(TAG, "Device info saved: ${result.output}")
+        shizukuManagerService.getSystemInfo { success, operation, result ->
+            if (success) {
+                saveDataToFile("device_info.txt", result)
+                Log.i(TAG, "Device info saved: $result")
             }
         }
     }
 
     /**
-     * Performs Shizuku package operations.
-     */
-    fun performShizukuPackageOperation(packageName: String, operation: String, shizukuManagerService: ShizukuManagerService?) {
-        if (shizukuManagerService == null) return
-
-        when (operation) {
-            "disable" -> {
-                shizukuManagerService.setComponentEnabledAsync(packageName, packageName, false) { success, pkg, _, enabled ->
-                    Log.i(TAG, "Package $pkg ${if (enabled) "enabled" else "disabled"}: $success")
-                }
-            }
-            "enable" -> {
-                shizukuManagerService.setComponentEnabledAsync(packageName, packageName, true) { success, pkg, _, enabled ->
-                    Log.i(TAG, "Package $pkg ${if (enabled) "enabled" else "disabled"}: $success")
-                }
-            }
-            "uninstall" -> {
-                shizukuManagerService.uninstallPackageAsync(packageName) { success, pkg ->
-                    Log.i(TAG, "Package $pkg uninstall: $success")
-                }
-            }
-        }
-    }
-
-    /**
-     * Starts or stops the remote ADB service.
+     * Toggles remote ADB.
      */
     fun toggleRemoteAdb() {
-        // Check if the service is already running
-        val serviceRunning = isServiceRunning(RemoteAdbService::class.java)
-
-        if (serviceRunning) {
-            // Stop the service if it's already running
-            context.stopService(Intent(context, RemoteAdbService::class.java))
-        } else {
-            // Start the service
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(Intent(context, RemoteAdbService::class.java))
-            } else {
-                context.startService(Intent(context, RemoteAdbService::class.java))
-            }
-        }
+        context.startService(Intent(context, RemoteAdbService::class.java))
     }
 
     /**
@@ -362,13 +325,12 @@ class FeatureHandler(private val context: Context) {
      * Saves data to a file.
      */
     private fun saveDataToFile(fileName: String, data: String) {
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val file = File(downloadsDir, fileName)
+        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
         try {
             file.writeText(data)
-            Log.d(TAG, "Saved data to $fileName")
+            Log.d(TAG, "Data saved to ${file.absolutePath}")
         } catch (e: IOException) {
-            Log.e(TAG, "Failed to write to file $fileName", e)
+            Log.e(TAG, "Failed to save data to file", e)
         }
     }
 }
