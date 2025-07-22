@@ -2,39 +2,11 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     alias(libs.plugins.ktlint)
-    id 'jacoco'
 }
 
 android {
     namespace = 'com.anti.rootadbcontroller'
     compileSdk = 34
-    buildToolsVersion '34.0.0'
-
-    // Signing configuration for release builds
-    signingConfigs {
-        release {
-            // Check if we're running in a CI environment
-            if (System.getenv("CI")) {
-                // Use environment variables in CI environment
-                storeFile file(System.getenv("KEYSTORE_FILE") ?: "")
-                storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias System.getenv("KEY_ALIAS") ?: ""
-                keyPassword System.getenv("KEY_PASSWORD") ?: ""
-            } else {
-                // Load from local.properties for local development
-                def keystorePropertiesFile = rootProject.file("keystore.properties")
-                if (keystorePropertiesFile.exists()) {
-                    def keystoreProperties = new Properties()
-                    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-
-                    storeFile file(keystoreProperties['storeFile'] ?: "")
-                    storePassword keystoreProperties['storePassword'] ?: ""
-                    keyAlias keystoreProperties['keyAlias'] ?: ""
-                    keyPassword keystoreProperties['keyPassword'] ?: ""
-                }
-            }
-        }
-    }
 
     defaultConfig {
         applicationId "com.anti.rootadbcontroller"
@@ -52,31 +24,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Apply signing configuration
-            signingConfig signingConfigs.release
-        }
-
-        staging {
-            initWith release
-            applicationIdSuffix ".staging"
-            versionNameSuffix "-staging"
-            debuggable true
-            // Disable minification for staging to aid debugging
-            minifyEnabled false
-            shrinkResources false
-        }
-
-        customTest {
-            initWith release
-            applicationIdSuffix ".customtest"
-            versionNameSuffix "-customtest"
-            debuggable true
-            // Disable minification for testing to aid debugging
-            minifyEnabled false
-            shrinkResources false
         }
     }
 
@@ -91,28 +40,6 @@ android {
 
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
-
-    dependenciesInfo {
-        includeInBundle true
-        includeInApk true
-    }
-
-    lint {
-        abortOnError false
-        checkReleaseBuilds true
-        checkAllWarnings true
-        warningsAsErrors false
-        ignoreWarnings false
-        quiet false
-        showAll true
-        explainIssues true
-        checkDependencies true
-        disable 'InvalidPackage', 'GradleDependency', 'OldTargetApi'
-        htmlReport true
-        xmlReport true
-        htmlOutput file("${project.buildDir}/reports/lint-results.html")
-        xmlOutput file("${project.buildDir}/reports/lint-results.xml")
     }
 }
 
@@ -149,101 +76,4 @@ dependencies {
     testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.espresso)
-}
-
-// JaCoCo configuration
-jacoco {
-    toolVersion = "0.8.10"
-}
-
-tasks.withType(Test) {
-    jacoco.includeNoLocationClasses = true
-    jacoco.excludes = ['jdk.internal.*']
-}
-
-// Unit tests coverage
-task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
-    reports {
-        xml.required = true
-        html.required = true
-    }
-
-    def fileFilter = [
-            '**/R.class',
-            '**/R$*.class',
-            '**/BuildConfig.*',
-            '**/Manifest*.*',
-            '**/*Test*.*',
-            'android/**/*.*',
-            // Exclude Kotlin generated classes
-            '**/*$Lambda$*.*',
-            '**/*$inlined$*.*',
-            '**/*Companion*.*'
-    ]
-    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug", excludes: fileFilter)
-    def kotlinDebugTree = fileTree(dir: "${buildDir}/tmp/kotlin-classes/debug", excludes: fileFilter)
-    def mainSrc = "${project.projectDir}/src/main/java"
-
-    sourceDirectories.from = files([mainSrc])
-    classDirectories.from = files([debugTree, kotlinDebugTree])
-    executionData.from = files("${buildDir}/jacoco/testDebugUnitTest.exec")
-}
-
-// Instrumented tests coverage
-task jacocoAndroidTestReport(type: JacocoReport, dependsOn: ['connectedDebugAndroidTest']) {
-    reports {
-        xml.required = true
-        html.required = true
-    }
-
-    def fileFilter = [
-            '**/R.class',
-            '**/R$*.class',
-            '**/BuildConfig.*',
-            '**/Manifest*.*',
-            '**/*Test*.*',
-            'android/**/*.*',
-            // Exclude Kotlin generated classes
-            '**/*$Lambda$*.*',
-            '**/*$inlined$*.*',
-            '**/*Companion*.*'
-    ]
-    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug", excludes: fileFilter)
-    def kotlinDebugTree = fileTree(dir: "${buildDir}/tmp/kotlin-classes/debug", excludes: fileFilter)
-    def mainSrc = "${project.projectDir}/src/main/java"
-
-    sourceDirectories.from = files([mainSrc])
-    classDirectories.from = files([debugTree, kotlinDebugTree])
-    executionData.from = files("${buildDir}/outputs/code_coverage/debugAndroidTest/connected/*/coverage.ec")
-}
-
-// Combined coverage report
-task jacocoCombinedReport(type: JacocoReport, dependsOn: ['testDebugUnitTest', 'connectedDebugAndroidTest']) {
-    reports {
-        xml.required = true
-        html.required = true
-    }
-
-    def fileFilter = [
-            '**/R.class',
-            '**/R$*.class',
-            '**/BuildConfig.*',
-            '**/Manifest*.*',
-            '**/*Test*.*',
-            'android/**/*.*',
-            // Exclude Kotlin generated classes
-            '**/*$Lambda$*.*',
-            '**/*$inlined$*.*',
-            '**/*Companion*.*'
-    ]
-    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug", excludes: fileFilter)
-    def kotlinDebugTree = fileTree(dir: "${buildDir}/tmp/kotlin-classes/debug", excludes: fileFilter)
-    def mainSrc = "${project.projectDir}/src/main/java"
-
-    sourceDirectories.from = files([debugTree, kotlinDebugTree])
-    classDirectories.from = files([debugTree, kotlinDebugTree])
-    executionData.from = files([
-            "${buildDir}/jacoco/testDebugUnitTest.exec",
-            "${buildDir}/outputs/code_coverage/debugAndroidTest/connected/*/coverage.ec"
-    ])
 }
