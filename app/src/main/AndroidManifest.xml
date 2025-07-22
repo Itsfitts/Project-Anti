@@ -1,45 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:installLocation="auto"
-    android:sharedUserId="com.anti.rootadbcontroller"
-    package="com.anti.rootadbcontroller">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Basic permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Permissions for root operations and ADB functionality -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    
     <!-- Shizuku permissions -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
-
-    <!-- System-level permissions -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.ACCESSIBILITY_SERVICE" />
-    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
-    <!-- Audio and location permissions -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Advanced permissions -->
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
-    <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Custom permission for kill switch -->
-    <permission
-        android:name="com.anti.rootadbcontroller.KILL_SWITCH_PERMISSION"
-        android:protectionLevel="signature" />
 
     <application
         android:allowBackup="true"
@@ -50,72 +23,27 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.RootADBController"
-        android:requestLegacyExternalStorage="true"
-        tools:targetApi="34">
-
-        <!-- Main Activity -->
+        tools:targetApi="31">
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.RootADBController"
-            android:launchMode="singleTop">
+            android:theme="@style/Theme.RootADBController">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Accessibility Service for keylogging and input simulation -->
-        <service
-            android:name=".services.KeyloggerAccessibilityService"
-            android:exported="false"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <!-- Microphone Recording Service -->
-        <service
-            android:name=".services.MicRecorderService"
-            android:exported="false" />
-
-        <!-- Location Tracking Service -->
-        <service
-            android:name=".services.LocationTrackerService"
-            android:exported="false" />
-
-        <!-- Overlay Service -->
-        <service
-            android:name=".services.OverlayService"
-            android:exported="false" />
-
-        <!-- Stealth Camera Service -->
-        <service
-            android:name=".services.StealthCameraService"
-            android:exported="false" />
-
-        <!-- Shizuku Manager Service -->
-        <service
-            android:name=".services.ShizukuManagerService"
-            android:exported="false" />
-
-        <!-- Kill Switch Receiver -->
-        <receiver
-            android:name=".services.KillSwitchReceiver"
+        
+        <!-- Shizuku service -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
             android:exported="true"
-            android:permission="com.anti.rootadbcontroller.KILL_SWITCH_PERMISSION">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.anti.rootadbcontroller.KILL_SWITCH" />
-            </intent-filter>
-        </receiver>
-
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+            
     </application>
 
 </manifest>

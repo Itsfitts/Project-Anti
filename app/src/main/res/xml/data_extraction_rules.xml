@@ -1,28 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- Exclude sensitive data from cloud backups -->
-        <exclude domain="file" path="Recordings/" />
-        <exclude domain="file" path="extracted_photos/" />
-        <exclude domain="file" path="extracted_whatsapp/" />
-        <exclude domain="file" path="StealthCaptures/" />
-        <exclude domain="file" path="extracted_contacts.txt" />
-        <exclude domain="file" path="extracted_messages.txt" />
-        <exclude domain="file" path="extracted_call_logs.txt" />
-        <exclude domain="file" path="extracted_location.txt" />
-        <exclude domain="sharedpref" path="keylog_data" />
+        <!-- Exclude specific files or directories from cloud backup -->
     </cloud-backup>
-
     <device-transfer>
-        <!-- Exclude sensitive data from device transfers -->
-        <exclude domain="file" path="Recordings/" />
-        <exclude domain="file" path="extracted_photos/" />
-        <exclude domain="file" path="extracted_whatsapp/" />
-        <exclude domain="file" path="StealthCaptures/" />
-        <exclude domain="file" path="extracted_contacts.txt" />
-        <exclude domain="file" path="extracted_messages.txt" />
-        <exclude domain="file" path="extracted_call_logs.txt" />
-        <exclude domain="file" path="extracted_location.txt" />
-        <exclude domain="sharedpref" path="keylog_data" />
+        <!-- Exclude specific files or directories from device transfer -->
     </device-transfer>
 </data-extraction-rules>
