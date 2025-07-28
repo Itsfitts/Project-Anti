@@ -53,7 +53,7 @@ jobs:
     - name: Run detekt
       run: ./gradlew detekt
     - name: Upload analysis results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: build/reports/detekt/detekt.sarif
