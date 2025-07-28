@@ -33,7 +33,7 @@ jobs:
       run: ./gradlew testDebugUnitTest
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: unit-test-results
@@ -88,7 +88,7 @@ jobs:
         script: ./gradlew connectedCheck
 
     - name: Upload instrumentation test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: instrumentation-test-results-api-${{ matrix.api-level }}
@@ -115,7 +115,7 @@ jobs:
       run: ./gradlew createDebugCoverageReport
 
     - name: Upload performance data
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-results
         path: app/build/reports/coverage/
@@ -139,7 +139,7 @@ jobs:
         ./gradlew ktlintCheck
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-reports
@@ -165,7 +165,7 @@ jobs:
         echo "## Security Tests" >> test-summary.md
 
     - name: Upload test summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: comprehensive-test-summary
         path: test-summary.md
