@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto Assign Issues
-        uses: pozil/auto-assign-issue@v1
+        uses: pozil/auto-assign-issue@v2
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           assignees: tokenblkguy
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto Assign PR
-        uses: pozil/auto-assign-issue@v1
+        uses: pozil/auto-assign-issue@v2
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           assignees: tokenblkguy
