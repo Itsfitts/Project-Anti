@@ -37,4 +37,4 @@ androidx-test-ext = { group = "androidx.test.ext", name = "junit", version = "1.
 espresso = { group = "androidx.test.espresso", name = "espresso-core", version = "3.5.1" }
 
 [plugins]
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.3.0" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "13.0.0" }
