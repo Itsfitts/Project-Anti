@@ -27,7 +27,7 @@ jobs:
     - name: Run security audit
       run: ./gradlew dependencyCheckAnalyze
     - name: Upload security report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: build/reports/dependency-check-report.html
@@ -72,7 +72,7 @@ jobs:
     - name: Generate performance report
       run: ./gradlew createDebugCoverageReport
     - name: Upload performance data
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-report
         path: app/build/reports/coverage/

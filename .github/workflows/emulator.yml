@@ -101,7 +101,7 @@ jobs:
           esac
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: emulator-test-results-api-${{ github.event.inputs.api_level }}
