@@ -13,7 +13,7 @@ libsuperuser = "1.1.1"
 gson = "2.10.1"
 junit = "4.13.2"
 mockito = "5.18.0"
-robolectric = "4.10.3"
+robolectric = "4.15.1"
 
 [libraries]
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
