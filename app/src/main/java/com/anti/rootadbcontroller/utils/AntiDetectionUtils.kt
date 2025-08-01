@@ -1,8 +1,8 @@
 package com.anti.rootadbcontroller.utils
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.os.Build
 import android.provider.Settings
@@ -37,9 +37,9 @@ object AntiDetectionUtils {
     )
 
     /**
-     * Comprehensive emulator detection using multiple techniques.
-     * @param context Application context.
-     * @return true if running in an emulator, false otherwise.
+     * Comprehensive emulator detection using multiple techniques
+     * @param context Application context
+     * @return true if running in an emulator, false otherwise
      */
     fun isEmulator(context: Context): Boolean {
         return checkBuild() ||
@@ -51,70 +51,80 @@ object AntiDetectionUtils {
     }
 
     /**
-     * Checks build properties for emulator characteristics.
+     * Check build properties for emulator characteristics
      */
     private fun checkBuild(): Boolean {
-        return (Build.FINGERPRINT.startsWith("generic") ||
+        return Build.FINGERPRINT.startsWith("generic") ||
                 Build.FINGERPRINT.startsWith("unknown") ||
                 Build.MODEL.contains("google_sdk") ||
                 Build.MODEL.contains("Emulator") ||
                 Build.MODEL.contains("Android SDK built for") ||
                 Build.MANUFACTURER.contains("Genymotion") ||
-                (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
-                "google_sdk" == Build.PRODUCT)
+                Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
+                "google_sdk" == Build.PRODUCT
     }
 
     /**
-     * Checks for emulator-specific files.
+     * Check for emulator-specific files
      */
     private fun checkFiles(): Boolean {
-        return (KNOWN_PIPES.any { File(it).exists() } ||
-                KNOWN_FILES.any { File(it).exists() } ||
-                KNOWN_GENY_FILES.any { File(it).exists() })
+        for (pipe in KNOWN_PIPES) {
+            if (File(pipe).exists()) return true
+        }
+        for (file in KNOWN_FILES) {
+            if (File(file).exists()) return true
+        }
+        for (file in KNOWN_GENY_FILES) {
+            if (File(file).exists()) return true
+        }
+        return false
     }
 
     /**
-     * Checks for emulator packages.
+     * Check for emulator packages
      */
     private fun checkPackages(context: Context): Boolean {
         val pm = context.packageManager
-        return KNOWN_PACKAGES.any {
+        for (packageName in KNOWN_PACKAGES) {
             try {
-                pm.getPackageInfo(it, 0)
-                true
-            } catch (_: PackageManager.NameNotFoundException) {
-                false
+                pm.getPackageInfo(packageName, 0)
+                return true
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Package not found, continue checking other packages
             }
         }
+        return false
     }
 
     /**
-     * Checks telephony for emulator characteristics.
+     * Check telephony for emulator characteristics
      */
     private fun checkTelephony(context: Context): Boolean {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager?
-        return "Android".equals(tm?.networkOperatorName, ignoreCase = true)
+        if (tm == null) return false
+        val networkOperator = tm.networkOperatorName
+        return "Android".equals(networkOperator, ignoreCase = true)
     }
 
     /**
-     * Checks if a debugger is attached.
+     * Check if a debugger is attached
      */
     fun checkDebugger(): Boolean {
         return android.os.Debug.isDebuggerConnected()
     }
 
     /**
-     * Checks for the presence of sensors, which are often missing in emulators.
+     * Check for the presence of sensors, which are often missing in emulators
      */
     private fun checkSensors(context: Context): Boolean {
         val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager?
-        return sm?.getSensorList(Sensor.TYPE_ALL)?.isNotEmpty() ?: false
+        return sm != null && sm.getSensorList(android.hardware.Sensor.TYPE_ALL).isNotEmpty()
     }
 
     /**
-     * Detects common analysis tools and frameworks.
-     * @param context Application context.
-     * @return true if an analysis tool is detected.
+     * Detect common analysis tools and frameworks
+     * @param context Application context
+     * @return true if an analysis tool is detected
      */
     fun detectAnalysisTools(context: Context): Boolean {
         val analysisPackages = listOf(
@@ -124,19 +134,20 @@ object AntiDetectionUtils {
             "com.topjohnwu.magisk"
         )
         val pm = context.packageManager
-        return analysisPackages.any {
+        for (packageName in analysisPackages) {
             try {
-                pm.getPackageInfo(it, 0)
-                Log.w(TAG, "Detected analysis tool: $it")
-                true
-            } catch (_: PackageManager.NameNotFoundException) {
-                false
+                pm.getPackageInfo(packageName, 0)
+                Log.w(TAG, "Detected analysis tool: $packageName")
+                return true
+            } catch (e: PackageManager.NameNotFoundException) {
+                // Package not found, continue checking other packages
             }
         }
+        return false
     }
 
     /**
-     * Performs anti-forensics by clearing logs.
+     * Perform anti-forensics by clearing logs
      */
     fun clearLogs() {
         try {
@@ -148,9 +159,9 @@ object AntiDetectionUtils {
     }
 
     /**
-     * Checks if the device is in developer mode.
-     * @param context Application context.
-     * @return true if developer mode is enabled.
+     * Check if the device is in developer mode
+     * @param context Application context
+     * @return true if developer mode is enabled
      */
     fun isDeveloperModeEnabled(context: Context): Boolean {
         return Settings.Secure.getInt(
@@ -159,4 +170,3 @@ object AntiDetectionUtils {
         ) != 0
     }
 }
-
