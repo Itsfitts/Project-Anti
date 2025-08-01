@@ -92,7 +92,7 @@ object AntiDetectionUtils {
      * Checks telephony for emulator characteristics.
      */
     private fun checkTelephony(context: Context): Boolean {
-        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager?
+        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
         return "Android".equals(tm?.networkOperatorName, ignoreCase = true)
     }
 
@@ -107,7 +107,7 @@ object AntiDetectionUtils {
      * Checks for the presence of sensors, which are often missing in emulators.
      */
     private fun checkSensors(context: Context): Boolean {
-        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager?
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         return sm?.getSensorList(Sensor.TYPE_ALL)?.isNotEmpty() ?: false
     }
 
