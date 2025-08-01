@@ -1,81 +1,432 @@
-name: Deploy to Google Cloud
+name: Deploy and Distribute
+
 on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
   workflow_dispatch:
+    inputs:
+      deployment_target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - 'firebase'
+          - 'github-release'
+          - 'google-play'
+          - 'all'
+        default: 'firebase'
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
 
 jobs:
-  build-and-deploy:
+  build-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      apk_path: ${{ steps.build.outputs.apk_path }}
+      aab_path: ${{ steps.build.outputs.aab_path }}
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+    
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
 
-    - name: Build release APK
-      run: ./gradlew assembleRelease
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-    - name: Sign APK
-      uses: r0adkll/sign-android-release@v1
-      with:
-        releaseDirectory: app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-        alias: ${{ secrets.ALIAS }}
-        keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-        keyPassword: ${{ secrets.KEY_PASSWORD }}
+      - name: Extract version information
+        id: version
+        run: |
+          # Extract version from gradle.properties or build.gradle
+          if [ -f "gradle.properties" ]; then
+            VERSION_NAME=$(grep "versionName" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+            VERSION_CODE=$(grep "versionCode" gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          else
+            # Fallback to git tag or default
+            VERSION_NAME=${GITHUB_REF#refs/tags/v}
+            VERSION_CODE=$(date +%s)
+          fi
+          
+          echo "version_name=${VERSION_NAME:-1.0.0}" >> $GITHUB_OUTPUT
+          echo "version_code=${VERSION_CODE:-1}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION_NAME:-1.0.0} (${VERSION_CODE:-1})"
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      - name: Run tests before deployment
+        run: |
+          ./gradlew testReleaseUnitTest --stacktrace
 
-    - name: Set up Google Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
+      - name: Run lint before deployment
+        run: |
+          ./gradlew lintRelease --stacktrace
 
-    - name: Upload to Cloud Storage
-      run: |
-        gsutil cp app/build/outputs/apk/release/app-release-signed.apk gs://${{ secrets.GCS_BUCKET }}/releases/
-        gsutil cp app/build/outputs/mapping/release/mapping.txt gs://${{ secrets.GCS_BUCKET }}/mappings/
+      - name: Build release APK and AAB
+        id: build
+        run: |
+          ./gradlew assembleRelease bundleRelease --stacktrace
+          
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          AAB_PATH=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+          
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "aab_path=$AAB_PATH" >> $GITHUB_OUTPUT
+          
+          echo "Built APK: $APK_PATH"
+          echo "Built AAB: $AAB_PATH"
 
-    - name: Deploy to Firebase App Distribution
-      uses: wzieba/Firebase-Distribution-Github-Action@v1
-      with:
-        appId: ${{ secrets.FIREBASE_APP_ID }}
-        serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        groups: testers
-        file: app/build/outputs/apk/release/app-release-signed.apk
+      - name: Sign APK
+        if: env.SIGNING_KEY != ''
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
-    - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+      - name: Sign AAB
+        if: env.SIGNING_KEY != ''
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
-    - name: Upload Release Asset
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: app/build/outputs/apk/release/app-release-signed.apk
-        asset_name: RootADBController-${{ github.ref_name }}.apk
-        asset_content_type: application/vnd.android.package-archive
+      - name: Generate checksums
+        run: |
+          cd app/build/outputs/apk/release
+          for file in *.apk; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              md5sum "$file" > "$file.md5"
+            fi
+          done
+          
+          cd ../../bundle/release
+          for file in *.aab; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              md5sum "$file" > "$file.md5"
+            fi
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts-${{ steps.version.outputs.version_name }}
+          path: |
+            app/build/outputs/apk/release/
+            app/build/outputs/bundle/release/
+            app/build/outputs/mapping/release/
+          retention-days: 90
+
+  deploy-firebase:
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: >
+      (github.event.inputs.deployment_target == 'firebase' || 
+       github.event.inputs.deployment_target == 'all' || 
+       github.event.inputs.deployment_target == null) &&
+      env.FIREBASE_APP_ID != ''
+    timeout-minutes: 15
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.build-release.outputs.version_name }}
+          path: artifacts
+
+      - name: Deploy to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: testers,internal
+          file: artifacts/app-release-signed.apk
+          releaseNotes: |
+            ${{ github.event.inputs.release_notes || 'Automated deployment from GitHub Actions' }}
+            
+            Version: ${{ needs.build-release.outputs.version_name }}
+            Build: ${{ needs.build-release.outputs.version_code }}
+            Commit: ${{ github.sha }}
+            
+            Changes in this build:
+            ${{ github.event.head_commit.message }}
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+
+      - name: Notify Firebase deployment
+        if: success()
+        run: |
+          echo "✅ Successfully deployed to Firebase App Distribution"
+          echo "Version: ${{ needs.build-release.outputs.version_name }}"
+          echo "Groups: testers, internal"
+
+  deploy-google-cloud:
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: >
+      (github.event.inputs.deployment_target == 'all' || 
+       github.event_name == 'push') &&
+      env.GCP_SERVICE_ACCOUNT_KEY != ''
+    timeout-minutes: 10
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.build-release.outputs.version_name }}
+          path: artifacts
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        env:
+          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload to Cloud Storage
+        run: |
+          BUCKET="${{ secrets.GCS_BUCKET }}"
+          VERSION="${{ needs.build-release.outputs.version_name }}"
+          
+          if [ -n "$BUCKET" ]; then
+            # Upload APK
+            gsutil cp artifacts/app-release-signed.apk "gs://$BUCKET/releases/v$VERSION/app-release-$VERSION.apk"
+            
+            # Upload AAB
+            gsutil cp artifacts/app-release.aab "gs://$BUCKET/releases/v$VERSION/app-release-$VERSION.aab"
+            
+            # Upload mapping file
+            if [ -f "artifacts/mapping.txt" ]; then
+              gsutil cp artifacts/mapping.txt "gs://$BUCKET/mappings/v$VERSION/mapping.txt"
+            fi
+            
+            # Upload checksums
+            gsutil cp artifacts/*.sha256 "gs://$BUCKET/releases/v$VERSION/"
+            gsutil cp artifacts/*.md5 "gs://$BUCKET/releases/v$VERSION/"
+            
+            echo "✅ Successfully uploaded to Google Cloud Storage"
+          else
+            echo "⚠️ GCS_BUCKET not configured, skipping upload"
+          fi
+
+  deploy-google-play:
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: >
+      (github.event.inputs.deployment_target == 'google-play' || 
+       github.event.inputs.deployment_target == 'all') &&
+      startsWith(github.ref, 'refs/tags/') &&
+      env.GOOGLE_PLAY_SERVICE_ACCOUNT != ''
+    timeout-minutes: 15
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.build-release.outputs.version_name }}
+          path: artifacts
+
+      - name: Deploy to Google Play Console
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          packageName: com.anti.rootadbcontroller
+          releaseFiles: artifacts/app-release.aab
+          track: internal
+          status: completed
+          inAppUpdatePriority: 2
+          userFraction: 0.1
+          whatsNewDirectory: fastlane/metadata/android/en-US/changelogs
+          mappingFile: artifacts/mapping.txt
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+
+      - name: Notify Google Play deployment
+        if: success()
+        run: |
+          echo "✅ Successfully deployed to Google Play Console (Internal Track)"
+          echo "Version: ${{ needs.build-release.outputs.version_name }}"
+          echo "User fraction: 10%"
+
+  create-github-release:
+    runs-on: ubuntu-latest
+    needs: build-release
+    if: >
+      (github.event.inputs.deployment_target == 'github-release' || 
+       github.event.inputs.deployment_target == 'all' || 
+       startsWith(github.ref, 'refs/tags/'))
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.build-release.outputs.version_name }}
+          path: artifacts
+
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          configuration: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["feature", "enhancement"]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes", 
+                  "labels": ["bug", "fix"]
+                },
+                {
+                  "title": "## 🔧 Maintenance",
+                  "labels": ["maintenance", "chore", "dependencies"]
+                }
+              ],
+              "template": "#{{CHANGELOG}}\n\n## 📱 Installation\n\nDownload the APK from the assets below and install on your Android device.\n\n## 🔍 Verification\n\nVerify the integrity of downloaded files using the provided checksums."
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || format('v{0}', needs.build-release.outputs.version_name) }}
+          name: Release ${{ needs.build-release.outputs.version_name }}
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ${{ github.event.inputs.release_notes }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          files: |
+            artifacts/app-release-signed.apk
+            artifacts/app-release.aab
+            artifacts/*.sha256
+            artifacts/*.md5
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deployment-summary:
+    runs-on: ubuntu-latest
+    needs: [build-release, deploy-firebase, deploy-google-cloud, deploy-google-play, create-github-release]
+    if: always()
+    
+    steps:
+      - name: Generate deployment summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.build-release.outputs.version_name }}';
+            const buildResult = '${{ needs.build-release.result }}';
+            const firebaseResult = '${{ needs.deploy-firebase.result }}';
+            const gcloudResult = '${{ needs.deploy-google-cloud.result }}';
+            const playResult = '${{ needs.deploy-google-play.result }}';
+            const githubResult = '${{ needs.create-github-release.result }}';
+            
+            let summary = `# 🚀 Deployment Summary - Version ${version}\n\n`;
+            summary += `## Build Status\n`;
+            summary += `- **Build**: ${buildResult === 'success' ? '✅' : '❌'} ${buildResult}\n\n`;
+            
+            summary += `## Deployment Results\n`;
+            summary += `| Target | Status | Result |\n`;
+            summary += `|--------|--------|--------|\n`;
+            
+            if (firebaseResult !== 'skipped') {
+              summary += `| Firebase App Distribution | ${firebaseResult === 'success' ? '✅' : '❌'} | ${firebaseResult} |\n`;
+            }
+            
+            if (gcloudResult !== 'skipped') {
+              summary += `| Google Cloud Storage | ${gcloudResult === 'success' ? '✅' : '❌'} | ${gcloudResult} |\n`;
+            }
+            
+            if (playResult !== 'skipped') {
+              summary += `| Google Play Console | ${playResult === 'success' ? '✅' : '❌'} | ${playResult} |\n`;
+            }
+            
+            if (githubResult !== 'skipped') {
+              summary += `| GitHub Release | ${githubResult === 'success' ? '✅' : '❌'} | ${githubResult} |\n`;
+            }
+            
+            summary += `\n## Next Steps\n`;
+            
+            if (buildResult === 'success') {
+              summary += `- ✅ Build completed successfully\n`;
+              
+              if (firebaseResult === 'success') {
+                summary += `- ✅ App available for testing via Firebase App Distribution\n`;
+              }
+              
+              if (githubResult === 'success') {
+                summary += `- ✅ Release created on GitHub with downloadable assets\n`;
+              }
+              
+              if (playResult === 'success') {
+                summary += `- ✅ App submitted to Google Play Console (Internal Track)\n`;
+                summary += `- 📋 Monitor the Play Console for review status\n`;
+              }
+            } else {
+              summary += `- ❌ Build failed - check the logs for details\n`;
+              summary += `- 🔧 Fix build issues before attempting deployment\n`;
+            }
+            
+            console.log(summary);
+            
+            // Create an issue with deployment summary for major releases
+            if (context.ref.startsWith('refs/tags/v') && !context.ref.includes('alpha') && !context.ref.includes('beta')) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚀 Deployment Summary - ${version}`,
+                body: summary,
+                labels: ['deployment', 'release']
+              });
+            }
