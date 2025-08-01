@@ -64,7 +64,7 @@ class StealthCameraService : Service() {
     }
 
     private fun openCamera() {
-        val manager = getSystemService(CAMERA_SERVICE) as CameraManager
+        val manager = getSystemService(CAMERA_SERVICE) as? CameraManager ?: return
         try {
             val cameraId = manager.cameraIdList.firstOrNull {
                 manager.getCameraCharacteristics(it)
