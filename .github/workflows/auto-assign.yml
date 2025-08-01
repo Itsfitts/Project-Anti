@@ -1,73 +1,343 @@
-name: Auto-assign and Fix PR Issues
+name: Auto-assign and Fix Issues
+
 on:
+  issues:
+    types: [opened, reopened]
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
 
 permissions:
   issues: write
   pull-requests: write
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  auto-assign:
+  auto-assign-issue:
     runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    timeout-minutes: 5
+    
     steps:
-    - name: Auto-assign PR
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { owner, repo, number } = context.issue;
-          const userLogin = context.payload.pull_request.user.login;
-          
-          // Skip assignment for bot users
-          if (!userLogin.includes('[bot]')) {
-            await github.rest.issues.addAssignees({
-              owner,
-              repo,
-              issue_number: number,
-              assignees: [userLogin]
-            });
-          }
+      - name: Auto-assign issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const issueCreator = context.payload.issue.user.login;
+            
+            // Skip assignment for bot users
+            if (issueCreator.includes('[bot]')) {
+              console.log('Skipping assignment for bot user');
+              return;
+            }
+            
+            // Assign to the issue creator
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: number,
+                assignees: [issueCreator]
+              });
+              console.log(`Assigned issue #${number} to ${issueCreator}`);
+            } catch (error) {
+              console.log(`Failed to assign issue: ${error.message}`);
+            }
+
+      - name: Add labels to issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const issueBody = context.payload.issue.body || '';
+            const issueTitle = context.payload.issue.title || '';
+            
+            let labels = [];
+            
+            // Auto-label based on content
+            if (issueTitle.toLowerCase().includes('bug') || issueBody.toLowerCase().includes('bug')) {
+              labels.push('bug');
+            }
+            if (issueTitle.toLowerCase().includes('feature') || issueBody.toLowerCase().includes('feature')) {
+              labels.push('enhancement');
+            }
+            if (issueTitle.toLowerCase().includes('doc') || issueBody.toLowerCase().includes('documentation')) {
+              labels.push('documentation');
+            }
+            if (issueTitle.toLowerCase().includes('security') || issueBody.toLowerCase().includes('security')) {
+              labels.push('security');
+            }
+            if (issueTitle.toLowerCase().includes('performance') || issueBody.toLowerCase().includes('performance')) {
+              labels.push('performance');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }
+
+  auto-assign-pr:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+    
+    steps:
+      - name: Auto-assign PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const prCreator = context.payload.pull_request.user.login;
+            
+            // Skip assignment for bot users
+            if (prCreator.includes('[bot]')) {
+              console.log('Skipping assignment for bot user');
+              return;
+            }
+            
+            // Assign to the PR creator
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: number,
+                assignees: [prCreator]
+              });
+              console.log(`Assigned PR #${number} to ${prCreator}`);
+            } catch (error) {
+              console.log(`Failed to assign PR: ${error.message}`);
+            }
+
+      - name: Add labels to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const prTitle = context.payload.pull_request.title || '';
+            const prBody = context.payload.pull_request.body || '';
+            
+            let labels = [];
+            
+            // Auto-label based on content
+            if (prTitle.toLowerCase().includes('fix') || prTitle.toLowerCase().includes('bug')) {
+              labels.push('bug');
+            }
+            if (prTitle.toLowerCase().includes('feat') || prTitle.toLowerCase().includes('feature')) {
+              labels.push('enhancement');
+            }
+            if (prTitle.toLowerCase().includes('doc') || prTitle.toLowerCase().includes('documentation')) {
+              labels.push('documentation');
+            }
+            if (prTitle.toLowerCase().includes('chore') || prTitle.toLowerCase().includes('maintenance')) {
+              labels.push('maintenance');
+            }
+            if (prTitle.toLowerCase().includes('security')) {
+              labels.push('security');
+            }
+            if (prTitle.toLowerCase().includes('perf') || prTitle.toLowerCase().includes('performance')) {
+              labels.push('performance');
+            }
+            if (prTitle.toLowerCase().includes('test')) {
+              labels.push('testing');
+            }
+            
+            // Check if it's a dependency update
+            if (prTitle.toLowerCase().includes('bump') || prTitle.toLowerCase().includes('update') && prTitle.toLowerCase().includes('dependencies')) {
+              labels.push('dependencies');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }
+
+      - name: Request review from maintainers
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const prCreator = context.payload.pull_request.user.login;
+            
+            // List of maintainers (update this list as needed)
+            const maintainers = ['HeartlessVeteran2'];
+            
+            // Don't request review from the PR creator
+            const reviewers = maintainers.filter(maintainer => maintainer !== prCreator);
+            
+            if (reviewers.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner,
+                  repo,
+                  pull_number: number,
+                  reviewers: reviewers
+                });
+                console.log(`Requested review from: ${reviewers.join(', ')}`);
+              } catch (error) {
+                console.log(`Failed to request reviewers: ${error.message}`);
+              }
+            }
 
   auto-fix:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.body, 'auto-fix')
+    if: github.event_name == 'pull_request' && (contains(github.event.pull_request.body, 'auto-fix') || contains(github.event.pull_request.title, 'auto-fix'))
+    timeout-minutes: 15
+    
     steps:
-    - uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        ref: ${{ github.head_ref }}
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    - name: Auto-fix code style
-      run: |
-        ./gradlew ktlintFormat || true
-        ./gradlew spotlessApply || true
-    - name: Commit fixes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add -A
-        git diff --staged --quiet || git commit -m "Auto-fix code style and formatting"
-        git push
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
-  dependency-update:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Auto-fix code style
+        run: |
+          echo "Running auto-fix for code style..."
+          
+          # Run ktlint format
+          ./gradlew ktlintFormat --stacktrace || true
+          
+          # Run spotless apply if available
+          ./gradlew spotlessApply --stacktrace || true
+          
+          # Run Android lint auto-fix if available
+          ./gradlew lintFix --stacktrace || true
+
+      - name: Auto-fix imports and formatting
+        run: |
+          echo "Organizing imports and fixing formatting..."
+          
+          # Remove trailing whitespace
+          find app/src -name "*.kt" -o -name "*.java" | xargs sed -i 's/[[:space:]]*$//'
+          
+          # Fix line endings
+          find app/src -name "*.kt" -o -name "*.java" | xargs dos2unix 2>/dev/null || true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected"
+            git diff --name-only
+          fi
+
+      - name: Commit and push fixes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Auto-Fix"
+          
+          git add -A
+          git commit -m "🤖 Auto-fix: Code style and formatting
+          
+          - Applied ktlint formatting
+          - Applied spotless formatting
+          - Fixed trailing whitespace
+          - Organized imports
+          
+          Co-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          
+          git push
+
+      - name: Comment on PR
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `🤖 **Auto-fix Applied**
+            
+            I've automatically applied the following fixes to your PR:
+            - ✅ Code formatting (ktlint)
+            - ✅ Import organization
+            - ✅ Trailing whitespace removal
+            - ✅ Line ending normalization
+            
+            The changes have been committed and pushed to your branch.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  dependency-update-approval:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.title, 'Update dependencies')
+    if: github.event_name == 'pull_request' && (github.actor == 'dependabot[bot]' || contains(github.event.pull_request.title, 'Update dependencies'))
+    timeout-minutes: 5
+    
     steps:
-    - uses: actions/checkout@v4
-    - name: Auto-approve dependency updates
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { owner, repo, number } = context.issue;
-          await github.rest.pulls.createReview({
-            owner,
-            repo,
-            pull_number: number,
-            event: 'APPROVE',
-            body: 'Auto-approving dependency update'
-          });
+      - name: Auto-approve dependency updates
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            
+            // Add auto-merge label for dependency updates
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: ['dependencies', 'auto-merge']
+            });
+            
+            // Auto-approve if it's a minor or patch update
+            const prTitle = context.payload.pull_request.title;
+            const isMinorOrPatch = prTitle.includes('patch') || prTitle.includes('minor') || 
+                                 !prTitle.includes('major');
+            
+            if (isMinorOrPatch) {
+              await github.rest.pulls.createReview({
+                owner,
+                repo,
+                pull_number: number,
+                event: 'APPROVE',
+                body: '🤖 Auto-approving dependency update (minor/patch version)'
+              });
+              
+              console.log('Auto-approved dependency update');
+            } else {
+              await github.rest.pulls.createReview({
+                owner,
+                repo,
+                pull_number: number,
+                event: 'REQUEST_CHANGES',
+                body: '🤖 Major dependency update detected. Please review manually before merging.'
+              });
+              
+              console.log('Requested manual review for major dependency update');
+            }
