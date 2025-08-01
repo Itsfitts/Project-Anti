@@ -61,4 +61,3 @@ class PermissionTest {
         // Note: Actual implementation would depend on how your app uses location
     }
 }
-
