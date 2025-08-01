@@ -82,7 +82,7 @@ object AntiDetectionUtils {
             try {
                 pm.getPackageInfo(it, 0)
                 true
-            } catch (e: PackageManager.NameNotFoundException) {
+            } catch (_: PackageManager.NameNotFoundException) {
                 false
             }
         }
@@ -129,7 +129,7 @@ object AntiDetectionUtils {
                 pm.getPackageInfo(it, 0)
                 Log.w(TAG, "Detected analysis tool: $it")
                 true
-            } catch (e: PackageManager.NameNotFoundException) {
+            } catch (_: PackageManager.NameNotFoundException) {
                 false
             }
         }
