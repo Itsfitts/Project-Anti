@@ -86,9 +86,10 @@ object ShizukuCallbacks {
         }
 
         companion object {
-            @JvmStatic
-            fun customCommand(command: String) = SystemOperation(Type.CUSTOM_COMMAND, customCommand = command)
+            fun customCommand(command: String) = SystemOperation(
+                type = Type.CUSTOM_COMMAND,
+                customCommand = command
+            )
         }
     }
 }
-
