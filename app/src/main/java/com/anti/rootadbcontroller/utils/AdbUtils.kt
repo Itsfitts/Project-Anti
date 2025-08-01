@@ -125,7 +125,7 @@ object AdbUtils {
      * Gets the device's IP address.
      */
     fun getDeviceIpAddress(context: Context): String? {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager?
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         wifiManager?.connectionInfo?.let { wifiInfo ->
             val ipAddress = wifiInfo.ipAddress
             if (ipAddress != 0) {
