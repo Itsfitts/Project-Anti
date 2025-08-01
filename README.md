@@ -99,7 +99,8 @@ We welcome contributions to improve ADB functionality:
 - Android Studio Arctic Fox or later
 - JDK 17
 - Android SDK with API level 34
-- Gradle 8.2+
+- Gradle 8.5+
+- Kotlin 2.2.0
 
 ## 📱 Compatibility
 

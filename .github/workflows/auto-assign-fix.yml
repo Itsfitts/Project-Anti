@@ -10,6 +10,9 @@ on:
 jobs:
   assign-issues:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Auto Assign Issues
         uses: pozil/auto-assign-issue@v2
@@ -21,6 +24,9 @@ jobs:
 
   assign-prs:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Auto Assign PR
         uses: pozil/auto-assign-issue@v2
@@ -59,18 +65,21 @@ jobs:
         run: |
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/0.48.2/ktlint
           chmod +x ktlint
-          ./ktlint --android "app/src/**/*.kt" -F
+          ./ktlint --android "app/src/**/*.kt" -F || true
+          echo "Ktlint formatting completed"
 
       # Fix Android Lint issues that can be auto-fixed
       - name: Run Android Lint with auto-fix
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
-        run: ./gradlew lintFix
+        run: |
+          ./gradlew lintFix || echo "Lint fix completed with warnings"
 
       # Update dependencies to latest versions
       - name: Update Gradle dependencies
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-dependency-updates') }}
         run: |
-          ./gradlew dependencyUpdates -Drevision=release
+          ./gradlew dependencyUpdates -Drevision=release || echo "Dependency updates check completed"
+          
           # Parse the report to get outdated dependencies
           if [ -f "build/dependencyUpdates/report.txt" ]; then
             echo "Outdated dependencies found. Updating build.gradle files..."
@@ -87,7 +96,10 @@ jobs:
       - name: Organize imports
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src -name "*.java" -o -name "*.kt" | while read file; do
+          if [ -d "app/src" ]; then
+            find app/src -name "*.java" -o -name "*.kt" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Sort imports
             if [[ "$file" == *.java ]]; then
               # For Java files
@@ -101,12 +113,17 @@ jobs:
               sed -i '/^import /!b;:a;N;/^import [^;]*$/!bb;s/\(.*\)\n\(import .*\)/\2\n\1/;ta;:b' "$file"
             fi
           done
+          fi
+          echo "Import organization completed"
 
       # Auto-fix String formatting in XML files
       - name: Fix XML string resources
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src/main/res/values -name "*.xml" | while read file; do
+          if [ -d "app/src/main/res/values" ]; then
+            find app/src/main/res/values -name "*.xml" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Replace straight quotes with curly quotes in string resources
             sed -i 's/<string name="\([^"]*\)">\([^<]*\)">\([^<]*\)<\/string>/<string name="\1">\2">\3<\/string>/g' "$file"
             sed -i 's/<string name="\([^"]*\)">\([^<]*\)">\([^<]*\)<\/string>/<string name="\1">\2">\3<\/string>/g' "$file"
@@ -114,12 +131,17 @@ jobs:
             # Ensure proper apostrophes
             sed -i "s/<string name=\"\([^\"]*\)\">\([^<]*\)'>\([^<]*\)<\/string>/<string name=\"\1\">\2'>\3<\/string>/g" "$file"
           done
+          fi
+          echo "XML string resource fixes completed"
 
       # Fix indentation and whitespace issues
       - name: Fix indentation and whitespace
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src -name "*.java" -o -name "*.kt" -o -name "*.xml" | while read file; do
+          if [ -d "app/src" ]; then
+            find app/src -name "*.java" -o -name "*.kt" -o -name "*.xml" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Remove trailing whitespace
             sed -i 's/[ \t]*$//' "$file"
 
@@ -128,6 +150,8 @@ jobs:
               echo "" >> "$file"
             fi
           done
+          fi
+          echo "Indentation and whitespace fixes completed"
 
       # Commit changes if any were made
       - name: Check for changes

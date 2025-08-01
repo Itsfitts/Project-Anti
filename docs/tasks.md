@@ -31,7 +31,7 @@ This document contains a prioritized list of tasks to improve the Project-Anti c
 - [ ] 19. Fix potential memory leaks in service connections
 - [ ] 20. Implement proper logging strategy with different log levels
 - [ ] 21. Add input validation for all public methods
-- [ ] 22. Fix the MainActivity.kt file which has both Java and Kotlin versions
+- [x] 22. Fix the MainActivity.kt file which has both Java and Kotlin versions
 
 ## Architecture
 
@@ -88,7 +88,7 @@ This document contains a prioritized list of tasks to improve the Project-Anti c
 
 ## Technical Debt
 
-- [ ] 61. Migrate from Java to Kotlin for all classes
+- [x] 61. Migrate from Java to Kotlin for all classes
 - [ ] 62. Update deprecated API usages
 - [ ] 63. Remove unused imports and dead code
 - [ ] 64. Fix TODOs in the codebase

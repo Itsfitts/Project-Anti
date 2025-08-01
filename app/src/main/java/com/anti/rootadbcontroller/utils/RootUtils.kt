@@ -2,9 +2,8 @@ package com.anti.rootadbcontroller.utils
 
 import android.util.Log
 import eu.chainfire.libsuperuser.Shell
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 /**
  * A utility class for executing root commands and performing various system-level operations
@@ -13,15 +12,13 @@ import kotlinx.coroutines.launch
  */
 object RootUtils {
     private const val TAG = "RootUtils"
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val executor: Executor = Executors.newSingleThreadExecutor()
 
     /**
      * Checks if root access is available on the device.
      * @return true if root is available, false otherwise.
      */
-    fun isRootAvailable(): Boolean {
-        return Shell.SU.available()
-    }
+    fun isRootAvailable(): Boolean = Shell.SU.available()
 
     /**
      * Executes a single command with root privileges.
@@ -29,7 +26,7 @@ object RootUtils {
      * @param callback A callback to handle the command's output or any errors.
      */
     fun executeRootCommand(command: String, callback: CommandCallback) {
-        scope.launch {
+        executor.execute {
             try {
                 val output = Shell.SU.run(command)
                 if (output != null) {
@@ -50,7 +47,7 @@ object RootUtils {
      * @param callback A callback to handle the output or any errors.
      */
     fun executeRootCommands(commands: List<String>, callback: CommandCallback) {
-        scope.launch {
+        executor.execute {
             try {
                 val output = Shell.SU.run(commands)
                 if (output != null) {
@@ -116,9 +113,17 @@ object RootUtils {
     /**
      * A callback interface for handling the results of root command execution.
      */
-    fun interface CommandCallback {
+    interface CommandCallback {
+        /**
+         * Called when the command executes successfully.
+         * @param output The output of the command.
+         */
         fun onSuccess(output: List<String>)
+
+        /**
+         * Called when the command fails to execute.
+         * @param error The error message.
+         */
         fun onFailure(error: String)
     }
 }
-

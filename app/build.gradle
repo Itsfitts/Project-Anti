@@ -9,7 +9,8 @@ android {
     compileSdk = 34
 
     sourceSets {
-        main.java.srcDirs = ['src/main/java']
+        main.java.srcDirs = ['src/main/java', 'src/main/kotlin']
+        main.kotlin.srcDirs = ['src/main/java', 'src/main/kotlin']
     }
 
     defaultConfig {

@@ -2,21 +2,21 @@ package com.anti.rootadbcontroller.utils
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Environment
 import android.util.Log
 import com.anti.rootadbcontroller.services.RemoteAdbService
 import com.anti.rootadbcontroller.services.ShizukuCallbacks
 import com.anti.rootadbcontroller.services.ShizukuManagerService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 /**
- * Utility class for automating features once access is gained.
+ * Utility class for automating features once access is gained
  */
 object AutomationUtils {
     private const val TAG = "AutomationUtils"
@@ -26,26 +26,36 @@ object AutomationUtils {
     private const val KEY_AUTO_PACKAGE_LIST = "auto_package_list"
     private const val KEY_AUTO_NETWORK_INFO = "auto_network_info"
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val executor: Executor = Executors.newSingleThreadExecutor()
 
     /**
-     * Executes automated tasks when root access is gained.
+     * Execute automated tasks when root access is gained
      *
-     * @param context Application context.
+     * @param context Application context
      */
     fun executeRootAutomations(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        scope.launch {
+
+        // Run automations in background
+        executor.execute {
             Log.d(TAG, "Executing root automations")
+
+            // Auto Remote ADB
             if (prefs.getBoolean(KEY_AUTO_REMOTE_ADB, false)) {
                 startRemoteAdbService(context)
             }
+
+            // Auto System Info
             if (prefs.getBoolean(KEY_AUTO_SYSTEM_INFO, false)) {
                 collectSystemInfo(context)
             }
+
+            // Auto Package List
             if (prefs.getBoolean(KEY_AUTO_PACKAGE_LIST, false)) {
                 collectPackageList(context)
             }
+
+            // Auto Network Info
             if (prefs.getBoolean(KEY_AUTO_NETWORK_INFO, false)) {
                 collectNetworkInfo(context)
             }
@@ -53,32 +63,42 @@ object AutomationUtils {
     }
 
     /**
-     * Executes automated tasks when Shizuku access is gained.
+     * Execute automated tasks when Shizuku access is gained
      *
-     * @param context Application context.
-     * @param service ShizukuManagerService instance.
+     * @param context Application context
+     * @param service ShizukuManagerService instance
      */
     fun executeShizukuAutomations(context: Context, service: ShizukuManagerService?) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        scope.launch {
+
+        // Run automations in background
+        executor.execute {
             Log.d(TAG, "Executing Shizuku automations")
+
+            // Auto Remote ADB
             if (prefs.getBoolean(KEY_AUTO_REMOTE_ADB, false)) {
                 startRemoteAdbService(context)
             }
+
+            // Auto System Info
             if (prefs.getBoolean(KEY_AUTO_SYSTEM_INFO, false)) {
-                service?.getSystemInfo { success, _, result ->
+                service?.getSystemInfo { success, operation, result ->
                     if (success) {
                         saveToFile(context, "system_info.txt", result)
                     }
                 }
             }
+
+            // Auto Package List
             if (prefs.getBoolean(KEY_AUTO_PACKAGE_LIST, false)) {
-                service?.listPackages(true) { success, _, result ->
+                service?.listPackages(true) { success, operation, result ->
                     if (success) {
                         saveToFile(context, "package_list.txt", result)
                     }
                 }
             }
+
+            // Auto Network Info
             if (prefs.getBoolean(KEY_AUTO_NETWORK_INFO, false)) {
                 service?.performNetworkOperation("netstat") { success, data ->
                     if (success) {
@@ -100,7 +120,7 @@ object AutomationUtils {
     }
 
     private fun collectSystemInfo(context: Context) {
-        scope.launch {
+        executor.execute {
             try {
                 val props = AdbUtils.executeCommand("getprop")
                 saveToFile(context, "system_info_root.txt", props)
@@ -111,7 +131,7 @@ object AutomationUtils {
     }
 
     private fun collectPackageList(context: Context) {
-        scope.launch {
+        executor.execute {
             try {
                 val packages = AdbUtils.executeCommand("pm list packages -f")
                 saveToFile(context, "package_list_root.txt", packages)
@@ -122,7 +142,7 @@ object AutomationUtils {
     }
 
     private fun collectNetworkInfo(context: Context) {
-        scope.launch {
+        executor.execute {
             try {
                 val netstat = AdbUtils.executeCommand("netstat -tuln")
                 saveToFile(context, "network_info_root.txt", netstat)
@@ -145,15 +165,15 @@ object AutomationUtils {
         try {
             FileWriter(file, true).use { writer -> // Append mode
                 writer.append(content).append("\n\n")
+                Log.i(TAG, "Saved data to ${file.absolutePath}")
             }
-            Log.i(TAG, "Saved data to ${file.absolutePath}")
         } catch (e: IOException) {
             Log.e(TAG, "Failed to save data to file: $fileName", e)
         }
     }
 
     /**
-     * Sets an automation setting.
+     * Set automation setting
      */
     fun setAutomation(context: Context, key: String, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -161,7 +181,7 @@ object AutomationUtils {
     }
 
     /**
-     * Gets an automation setting.
+     * Get automation setting
      */
     fun getAutomation(context: Context, key: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -169,7 +189,7 @@ object AutomationUtils {
     }
 
     /**
-     * Gets all automation keys.
+     * Get all automation keys
      */
     fun getAllAutomationKeys(): List<String> {
         return listOf(
@@ -181,7 +201,7 @@ object AutomationUtils {
     }
 
     /**
-     * Gets the key name for display.
+     * Get key name for display
      */
     fun getKeyDisplayName(key: String): String {
         return when (key) {
@@ -193,4 +213,3 @@ object AutomationUtils {
         }
     }
 }
-
