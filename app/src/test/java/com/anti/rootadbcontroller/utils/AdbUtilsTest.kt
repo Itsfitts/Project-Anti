@@ -1,57 +1,57 @@
 package com.anti.rootadbcontroller.utils
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.wifi.WifiManager
-import org.junit.Assert.assertEquals
-import org.junit.Before
-import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.Mockito.`when`
-import org.mockito.MockitoAnnotations
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-
-/**
- * Unit tests for [AdbUtils]
- */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
 class AdbUtilsTest {
-
-    @Mock
-    private lateinit var mockContext: Context
-
-    @Mock
-    private lateinit var mockWifiManager: WifiManager
-
-    @Mock
-    private lateinit var mockConnectivityManager: ConnectivityManager
-
-    @Before
     fun setUp() {
-        MockitoAnnotations.openMocks(this)
-
-        // Setup WifiManager mock
-        `when`(mockContext.applicationContext).thenReturn(mockContext)
-        `when`(mockContext.getSystemService(Context.WIFI_SERVICE)).thenReturn(mockWifiManager)
-        `when`(mockContext.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(mockConnectivityManager)
-    }
-
-    @Test
-    fun `getDeviceIpAddress with valid wifi IP returns wifi IP`() {
-        // Arrange
         val adbUtilsSpy = org.mockito.Mockito.spy(AdbUtils)
+}
+import org.junit.Test
+@Config(sdk = [28])
+    @Before
+        // Arrange
+    }
+import org.junit.Before
+@RunWith(RobolectricTestRunner::class)
 
-        // Mock the private methods
-        org.mockito.Mockito.doReturn("192.168.1.100").`when`(adbUtilsSpy).getDeviceIpAddress(mockContext)
-
-        // Act
-        val result = adbUtilsSpy.getDeviceIpAddress(mockContext)
+    fun `getDeviceIpAddress with valid wifi IP returns wifi IP`() {
+        println("[DEBUG_LOG] Device IP Address (WiFi): $result")
+import org.junit.Assert.assertEquals
+ */
+    private lateinit var mockConnectivityManager: ConnectivityManager
+    @Test
+        assertEquals("Should return WiFi IP when available", "192.168.1.100", result)
+import android.net.wifi.WifiManager
+ * Unit tests for [AdbUtils]
+    @Mock
 
         // Assert
-        assertEquals("Should return WiFi IP when available", "192.168.1.100", result)
-        println("[DEBUG_LOG] Device IP Address (WiFi): $result")
+import android.net.ConnectivityManager
+/**
+
     }
-}
+
+import android.content.Context
+
+    private lateinit var mockWifiManager: WifiManager
+        `when`(mockContext.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(mockConnectivityManager)
+        val result = adbUtilsSpy.getDeviceIpAddress(mockContext)
+import org.robolectric.annotation.Config
+    @Mock
+        `when`(mockContext.getSystemService(Context.WIFI_SERVICE)).thenReturn(mockWifiManager)
+        // Act
+import org.robolectric.RobolectricTestRunner
+
+        `when`(mockContext.applicationContext).thenReturn(mockContext)
+
+import org.mockito.MockitoAnnotations
+    private lateinit var mockContext: Context
+        // Setup WifiManager mock
+        org.mockito.Mockito.doReturn("192.168.1.100").`when`(adbUtilsSpy).getDeviceIpAddress(mockContext)
+import org.mockito.Mockito.`when`
+    @Mock
+
+        // Mock the private methods
+import org.mockito.Mock
+
+        MockitoAnnotations.openMocks(this)
+

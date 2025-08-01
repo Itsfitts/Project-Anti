@@ -1,129 +1,129 @@
 package com.anti.rootadbcontroller.utils
 
-import android.util.Log
-import eu.chainfire.libsuperuser.Shell
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors
-
-/**
  * A utility class for executing root commands and performing various system-level operations
- * that require elevated privileges. This class provides a simplified interface for interacting
- * with the system shell as the root user.
- */
 object RootUtils {
-    private const val TAG = "RootUtils"
-    private val executor: Executor = Executors.newSingleThreadExecutor()
-
     /**
-     * Checks if root access is available on the device.
-     * @return true if root is available, false otherwise.
-     */
     fun isRootAvailable(): Boolean = Shell.SU.available()
-
-    /**
-     * Executes a single command with root privileges.
      * @param command The command to execute.
-     * @param callback A callback to handle the command's output or any errors.
-     */
-    fun executeRootCommand(command: String, callback: CommandCallback) {
         executor.execute {
-            try {
-                val output = Shell.SU.run(command)
-                if (output != null) {
                     callback.onSuccess(output)
-                } else {
-                    callback.onFailure("Command execution failed")
-                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error executing root command", e)
-                callback.onFailure(e.message ?: "Unknown error")
-            }
         }
-    }
-
-    /**
      * Executes multiple commands in a single root shell session.
-     * @param commands A list of commands to execute.
-     * @param callback A callback to handle the output or any errors.
-     */
     fun executeRootCommands(commands: List<String>, callback: CommandCallback) {
-        executor.execute {
-            try {
-                val output = Shell.SU.run(commands)
                 if (output != null) {
-                    callback.onSuccess(output)
-                } else {
-                    callback.onFailure("Commands execution failed")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error executing root commands", e)
-                callback.onFailure(e.message ?: "Unknown error")
             }
-        }
-    }
-
     /**
-     * Installs an APK silently in the background without user interaction.
-     * @param apkPath The file path to the APK to be installed.
-     * @param callback A callback to handle the installation result.
      */
-    fun silentInstall(apkPath: String, callback: CommandCallback) {
-        val command = "pm install -r $apkPath"
-        executeRootCommand(command, callback)
     }
-
-    /**
-     * Uninstalls an application silently in the background without user interaction.
      * @param packageName The package name of the application to uninstall.
-     * @param callback A callback to handle the uninstallation result.
-     */
-    fun silentUninstall(packageName: String, callback: CommandCallback) {
         val command = "pm uninstall $packageName"
-        executeRootCommand(command, callback)
-    }
-
     /**
-     * Clears the data of a specific application, effectively resetting it.
-     * @param packageName The package name of the application to clear.
-     * @param callback A callback to handle the result.
      */
-    fun clearAppData(packageName: String, callback: CommandCallback) {
-        val command = "pm clear $packageName"
-        executeRootCommand(command, callback)
     }
-
-    /**
-     * Reboots the device.
      * @param callback A callback to handle the result.
-     */
-    fun rebootDevice(callback: CommandCallback) {
-        executeRootCommand("reboot", callback)
     }
-
-    /**
-     * Takes a screenshot and saves it to the specified path.
      * @param path The path to save the screenshot.
-     * @param callback A callback to handle the result.
-     */
-    fun takeScreenshot(path: String, callback: CommandCallback) {
         val command = "screencap -p $path"
-        executeRootCommand(command, callback)
-    }
-
     /**
-     * A callback interface for handling the results of root command execution.
-     */
-    interface CommandCallback {
         /**
-         * Called when the command executes successfully.
-         * @param output The output of the command.
-         */
         fun onSuccess(output: List<String>)
-
-        /**
-         * Called when the command fails to execute.
          * @param error The error message.
-         */
-        fun onFailure(error: String)
-    }
 }
+import eu.chainfire.libsuperuser.Shell
+/**
+ */
+
+     */
+     * Executes a single command with root privileges.
+    fun executeRootCommand(command: String, callback: CommandCallback) {
+                if (output != null) {
+                }
+            }
+    /**
+     */
+                val output = Shell.SU.run(commands)
+                    callback.onFailure("Commands execution failed")
+                callback.onFailure(e.message ?: "Unknown error")
+
+     * @param callback A callback to handle the installation result.
+        executeRootCommand(command, callback)
+     * Uninstalls an application silently in the background without user interaction.
+    fun silentUninstall(packageName: String, callback: CommandCallback) {
+
+     * @param callback A callback to handle the result.
+        executeRootCommand(command, callback)
+     * Reboots the device.
+        executeRootCommand("reboot", callback)
+     * Takes a screenshot and saves it to the specified path.
+    fun takeScreenshot(path: String, callback: CommandCallback) {
+
+    interface CommandCallback {
+         */
+         * Called when the command fails to execute.
+    }
+import android.util.Log
+
+ * with the system shell as the root user.
+    private val executor: Executor = Executors.newSingleThreadExecutor()
+     * @return true if root is available, false otherwise.
+    /**
+     */
+                val output = Shell.SU.run(command)
+                    callback.onFailure("Command execution failed")
+                callback.onFailure(e.message ?: "Unknown error")
+
+     * @param callback A callback to handle the output or any errors.
+            try {
+                } else {
+                Log.e(TAG, "Error executing root commands", e)
+    }
+     * @param apkPath The file path to the APK to be installed.
+        val command = "pm install -r $apkPath"
+    /**
+     */
+    }
+     * @param packageName The package name of the application to clear.
+        val command = "pm clear $packageName"
+    /**
+    fun rebootDevice(callback: CommandCallback) {
+    /**
+     */
+    }
+     */
+         * @param output The output of the command.
+        /**
+        fun onFailure(error: String)
+import java.util.concurrent.Executors
+ * that require elevated privileges. This class provides a simplified interface for interacting
+    private const val TAG = "RootUtils"
+     * Checks if root access is available on the device.
+
+     * @param callback A callback to handle the command's output or any errors.
+            try {
+                } else {
+                Log.e(TAG, "Error executing root command", e)
+    }
+     * @param commands A list of commands to execute.
+        executor.execute {
+                    callback.onSuccess(output)
+            } catch (e: Exception) {
+        }
+     * Installs an APK silently in the background without user interaction.
+    fun silentInstall(apkPath: String, callback: CommandCallback) {
+
+     * @param callback A callback to handle the uninstallation result.
+        executeRootCommand(command, callback)
+     * Clears the data of a specific application, effectively resetting it.
+    fun clearAppData(packageName: String, callback: CommandCallback) {
+
+     */
+
+     * @param callback A callback to handle the result.
+        executeRootCommand(command, callback)
+     * A callback interface for handling the results of root command execution.
+         * Called when the command executes successfully.
+
+         */

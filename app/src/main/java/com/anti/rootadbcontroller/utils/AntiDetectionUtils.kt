@@ -1,176 +1,177 @@
 package com.anti.rootadbcontroller.utils
 
-import android.content.Context
-import android.content.pm.PackageManager
-import android.hardware.SensorManager
-import android.os.Build
-import android.provider.Settings
-import android.telephony.TelephonyManager
 import android.util.Log
-import java.io.File
-
-/**
- * Utility class for detecting emulators, analysis tools, and implementing anti-forensics measures.
- * This helps the app avoid detection in sandbox environments and analysis platforms.
- */
-object AntiDetectionUtils {
     private const val TAG = "AntiDetectionUtils"
-
-    // Known emulator characteristics
-    private val KNOWN_PIPES = arrayOf(
-        "/dev/socket/qemud",
-        "/dev/qemu_pipe",
-    )
-
     private val KNOWN_FILES = arrayOf(
-        "/system/lib/libc_malloc_debug_qemu.so",
-        "/sys/qemu_trace",
-        "/system/bin/qemu-props",
+        "/dev/socket/baseband_genyd"
     )
-
-    private val KNOWN_GENY_FILES = arrayOf(
-        "/dev/socket/genyd",
-        "/dev/socket/baseband_genyd",
-    )
-
-    private val KNOWN_PACKAGES = arrayOf(
-        "com.google.android.launcher.layouts.genymotion",
-        "com.bluestacks",
-        "com.bignox.app",
-        "com.vphone.launcher",
-    )
-
-    /**
-     * Comprehensive emulator detection using multiple techniques
-     * @param context Application context
-     * @return true if running in an emulator, false otherwise
-     */
-    fun isEmulator(context: Context): Boolean {
         return checkBuild() ||
-            checkFiles() ||
-            checkPackages(context) ||
-            checkTelephony(context) ||
-            checkDebugger() ||
-            checkSensors(context)
-    }
-
     /**
-     * Check build properties for emulator characteristics
-     */
-    private fun checkBuild(): Boolean {
-        return Build.FINGERPRINT.startsWith("generic") ||
-            Build.FINGERPRINT.startsWith("unknown") ||
-            Build.MODEL.contains("google_sdk") ||
-            Build.MODEL.contains("Emulator") ||
             Build.MODEL.contains("Android SDK built for") ||
-            Build.MANUFACTURER.contains("Genymotion") ||
-            Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
-            "google_sdk" == Build.PRODUCT
-    }
-
-    /**
-     * Check for emulator-specific files
      */
-    private fun checkFiles(): Boolean {
-        for (pipe in KNOWN_PIPES) {
-            if (File(pipe).exists()) return true
-        }
-        for (file in KNOWN_FILES) {
-            if (File(file).exists()) return true
-        }
         for (file in KNOWN_GENY_FILES) {
-            if (File(file).exists()) return true
-        }
-        return false
-    }
-
-    /**
-     * Check for emulator packages
      */
-    private fun checkPackages(context: Context): Boolean {
-        val pm = context.packageManager
-        for (packageName in KNOWN_PACKAGES) {
-            try {
-                pm.getPackageInfo(packageName, 0)
-                return true
-            } catch (e: PackageManager.NameNotFoundException) {
                 // Package not found, continue checking other packages
-            }
-        }
-        return false
-    }
-
-    /**
-     * Check telephony for emulator characteristics
      */
-    private fun checkTelephony(context: Context): Boolean {
-        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager?
-        if (tm == null) return false
-        val networkOperator = tm.networkOperatorName
-        return "Android".equals(networkOperator, ignoreCase = true)
-    }
-
-    /**
-     * Check if a debugger is attached
-     */
-    fun checkDebugger(): Boolean {
-        return android.os.Debug.isDebuggerConnected()
-    }
-
     /**
      * Check for the presence of sensors, which are often missing in emulators
+     * Detect common analysis tools and frameworks
+            "com.saurik.substrate",
+                return true
+    /**
+            Log.e(TAG, "Failed to clear logs", e)
+     */
+}
+import android.telephony.TelephonyManager
+object AntiDetectionUtils {
+
+        "/dev/socket/genyd",
+        "com.vphone.launcher"
+    fun isEmulator(context: Context): Boolean {
+
+            Build.MODEL.contains("Emulator") ||
+     * Check for emulator-specific files
+        }
+     * Check for emulator packages
+            } catch (e: PackageManager.NameNotFoundException) {
+     * Check telephony for emulator characteristics
+
+    /**
+    /**
+            "io.va.exposed",
+                Log.w(TAG, "Detected analysis tool: $packageName")
+
+        } catch (e: Exception) {
+     * @return true if developer mode is enabled
+    }
+import android.provider.Settings
+ */
+    )
+    private val KNOWN_GENY_FILES = arrayOf(
+        "com.bignox.app",
+     */
+    }
+            Build.MODEL.contains("google_sdk") ||
+    /**
+            if (File(file).exists()) return true
+    /**
+                return true
+    /**
+    }
+
+
+            "de.robv.android.xposed.installer",
+                pm.getPackageInfo(packageName, 0)
+    }
+            Log.i(TAG, "Cleared application logs to hinder analysis.")
+     * @param context Application context
+        ) != 0
+import android.os.Build
+ * This helps the app avoid detection in sandbox environments and analysis platforms.
+        "/dev/qemu_pipe"
+
+        "com.bluestacks",
+     * @return true if running in an emulator, false otherwise
+            checkSensors(context)
+            Build.FINGERPRINT.startsWith("unknown") ||
+
+        for (file in KNOWN_FILES) {
+
+                pm.getPackageInfo(packageName, 0)
+
+        return "Android".equals(networkOperator, ignoreCase = true)
+    }
+    }
+        val analysisPackages = listOf(
+            try {
+        return false
+            Runtime.getRuntime().exec("logcat -c")
+     * Check if the device is in developer mode
+            0
+import android.hardware.SensorManager
+ * Utility class for detecting emulators, analysis tools, and implementing anti-forensics measures.
+        "/dev/socket/qemud",
+    )
+        "com.google.android.launcher.layouts.genymotion",
+     * @param context Application context
+            checkDebugger() ||
+        return Build.FINGERPRINT.startsWith("generic") ||
+    }
+        }
+    }
+            try {
+    }
+        val networkOperator = tm.networkOperatorName
+        return android.os.Debug.isDebuggerConnected()
+        return sm != null && sm.getSensorList(android.hardware.Sensor.TYPE_ALL).isNotEmpty()
+    fun detectAnalysisTools(context: Context): Boolean {
+        for (packageName in analysisPackages) {
+        }
+        try {
+    /**
+            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+import android.content.pm.PackageManager
+/**
+    private val KNOWN_PIPES = arrayOf(
+        "/system/bin/qemu-props"
+    private val KNOWN_PACKAGES = arrayOf(
+     * Comprehensive emulator detection using multiple techniques
+            checkTelephony(context) ||
+    private fun checkBuild(): Boolean {
+            "google_sdk" == Build.PRODUCT
+            if (File(pipe).exists()) return true
+        return false
+        for (packageName in KNOWN_PACKAGES) {
+        return false
+        if (tm == null) return false
+    fun checkDebugger(): Boolean {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager?
+     */
+        val pm = context.packageManager
+            }
+    fun clearLogs() {
+
+            context.contentResolver,
+import android.content.Context
+
+    // Known emulator characteristics
+        "/sys/qemu_trace",
+
+    /**
+            checkPackages(context) ||
+     */
+            Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
+        for (pipe in KNOWN_PIPES) {
+        }
+        val pm = context.packageManager
+        }
+        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager?
      */
     private fun checkSensors(context: Context): Boolean {
-        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager?
-        return sm != null && sm.getSensorList(android.hardware.Sensor.TYPE_ALL).isNotEmpty()
-    }
-
-    /**
-     * Detect common analysis tools and frameworks
-     * @param context Application context
      * @return true if an analysis tool is detected
-     */
-    fun detectAnalysisTools(context: Context): Boolean {
-        val analysisPackages = listOf(
-            "de.robv.android.xposed.installer",
-            "io.va.exposed",
-            "com.saurik.substrate",
-            "com.topjohnwu.magisk",
         )
-        val pm = context.packageManager
-        for (packageName in analysisPackages) {
-            try {
-                pm.getPackageInfo(packageName, 0)
-                Log.w(TAG, "Detected analysis tool: $packageName")
-                return true
-            } catch (e: PackageManager.NameNotFoundException) {
                 // Package not found, continue checking other packages
-            }
-        }
-        return false
-    }
-
-    /**
-     * Perform anti-forensics by clearing logs
      */
-    fun clearLogs() {
-        try {
-            Runtime.getRuntime().exec("logcat -c")
-            Log.i(TAG, "Cleared application logs to hinder analysis.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to clear logs", e)
-        }
     }
-
-    /**
-     * Check if the device is in developer mode
-     * @param context Application context
-     * @return true if developer mode is enabled
-     */
-    fun isDeveloperModeEnabled(context: Context): Boolean {
         return Settings.Secure.getInt(
-            context.contentResolver,
-            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0,
-        ) != 0
-    }
-}
+import java.io.File
+
+        "/system/lib/libc_malloc_debug_qemu.so",
+    )
+
+            checkFiles() ||
+     * Check build properties for emulator characteristics
+            Build.MANUFACTURER.contains("Genymotion") ||
+    private fun checkFiles(): Boolean {
+            if (File(file).exists()) return true
+    private fun checkPackages(context: Context): Boolean {
+            }
+    private fun checkTelephony(context: Context): Boolean {
+     * Check if a debugger is attached
+     */
+     * @param context Application context
+            "com.topjohnwu.magisk"
+            } catch (e: PackageManager.NameNotFoundException) {
+     * Perform anti-forensics by clearing logs
+        }
+    fun isDeveloperModeEnabled(context: Context): Boolean {

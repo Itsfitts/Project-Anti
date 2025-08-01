@@ -9,5 +9,5 @@ data class FeatureItem(
     val title: String,
     val description: String,
     val iconResId: Int,
-    val detailedExplanation: String = "",
+    val detailedExplanation: String = ""
 )
