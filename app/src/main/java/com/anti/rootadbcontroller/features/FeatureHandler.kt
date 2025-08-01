@@ -237,7 +237,7 @@ class FeatureHandler(private val context: Context) {
      * Gets clipboard content.
      */
     fun getClipboard() {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         val content = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: "Clipboard is empty."
         saveDataToFile("clipboard_content.txt", content)
     }
