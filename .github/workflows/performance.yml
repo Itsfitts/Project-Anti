@@ -4,83 +4,186 @@ on:
   pull_request:
     paths:
       - 'app/**'
-  workflow_dispatch:  # Allow manual triggering
+      - 'build.gradle'
+      - 'app/build.gradle'
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
 
 jobs:
   apk-analysis:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: APK Size Analysis
         id: apk-size
         run: |
-          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
-          APK_SIZE=$(stat -c%s "$APK_PATH")
-          APK_SIZE_MB=$(echo "scale=2; $APK_SIZE/1048576" | bc)
-          echo "APK Size: $APK_SIZE_MB MB"
-          echo "::set-output name=apk_size::$APK_SIZE"
-          echo "::set-output name=apk_size_mb::$APK_SIZE_MB"
-          echo "::set-output name=apk_path::$APK_PATH"
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          
+          DEBUG_SIZE=$(stat -c%s "$DEBUG_APK")
+          RELEASE_SIZE=$(stat -c%s "$RELEASE_APK")
+          
+          DEBUG_SIZE_MB=$(echo "scale=2; $DEBUG_SIZE/1048576" | bc)
+          RELEASE_SIZE_MB=$(echo "scale=2; $RELEASE_SIZE/1048576" | bc)
+          
+          echo "Debug APK Size: $DEBUG_SIZE_MB MB"
+          echo "Release APK Size: $RELEASE_SIZE_MB MB"
+          
+          echo "debug_apk_size=$DEBUG_SIZE" >> $GITHUB_OUTPUT
+          echo "release_apk_size=$RELEASE_SIZE" >> $GITHUB_OUTPUT
+          echo "debug_apk_size_mb=$DEBUG_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "release_apk_size_mb=$RELEASE_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "debug_apk_path=$DEBUG_APK" >> $GITHUB_OUTPUT
+          echo "release_apk_path=$RELEASE_APK" >> $GITHUB_OUTPUT
 
-      - name: Analyze APK with APKAnalyzer
+      - name: Analyze APK composition
         run: |
           mkdir -p apk-analysis
           
-          # Download APK Analyzer
-          wget -q https://github.com/google/android-classyshark/releases/download/8.2/ClassyShark.jar -O classyshark.jar
-          
-          # Analyze DEX files
-          java -jar classyshark.jar -export "${{ steps.apk-size.outputs.apk_path }}" apk-analysis
-          
-          # Create summary report
+          # Analyze debug APK
           echo "# APK Analysis Report" > apk-analysis/summary.md
-          echo "APK Size: ${{ steps.apk-size.outputs.apk_size_mb }} MB" >> apk-analysis/summary.md
           echo "" >> apk-analysis/summary.md
-          echo "## Top 10 Largest Files" >> apk-analysis/summary.md
-          unzip -l "${{ steps.apk-size.outputs.apk_path }}" | sort -nr -k1 | head -n 10 >> apk-analysis/summary.md
+          echo "## Size Comparison" >> apk-analysis/summary.md
+          echo "| Build Type | Size (MB) | Size (Bytes) |" >> apk-analysis/summary.md
+          echo "|------------|-----------|--------------|" >> apk-analysis/summary.md
+          echo "| Debug | ${{ steps.apk-size.outputs.debug_apk_size_mb }} | ${{ steps.apk-size.outputs.debug_apk_size }} |" >> apk-analysis/summary.md
+          echo "| Release | ${{ steps.apk-size.outputs.release_apk_size_mb }} | ${{ steps.apk-size.outputs.release_apk_size }} |" >> apk-analysis/summary.md
+          echo "" >> apk-analysis/summary.md
+          
+          # Analyze file composition
+          echo "## Debug APK Composition" >> apk-analysis/summary.md
+          echo "### Top 15 Largest Files" >> apk-analysis/summary.md
+          echo '```' >> apk-analysis/summary.md
+          unzip -l "${{ steps.apk-size.outputs.debug_apk_path }}" | sort -nr -k1 | head -n 15 >> apk-analysis/summary.md
+          echo '```' >> apk-analysis/summary.md
           
           echo "" >> apk-analysis/summary.md
-          echo "## Methods Count" >> apk-analysis/summary.md
-          cat apk-analysis/*.txt | grep "methods:" >> apk-analysis/summary.md
+          echo "### File Type Distribution" >> apk-analysis/summary.md
+          echo '```' >> apk-analysis/summary.md
+          unzip -l "${{ steps.apk-size.outputs.debug_apk_path }}" | awk '{print $4}' | grep -E '\.[a-zA-Z0-9]+$' | sed 's/.*\.//' | sort | uniq -c | sort -nr >> apk-analysis/summary.md
+          echo '```' >> apk-analysis/summary.md
+
+      - name: Method count analysis
+        run: |
+          # Install dex2jar for method counting
+          wget -q https://github.com/pxb1988/dex2jar/releases/download/v2.4/dex2jar-2.4.zip
+          unzip -q dex2jar-2.4.zip
+          
+          # Extract DEX files and count methods
+          unzip -q "${{ steps.apk-size.outputs.debug_apk_path }}" "*.dex" -d temp_dex/
+          
+          echo "" >> apk-analysis/summary.md
+          echo "## Method Count Analysis" >> apk-analysis/summary.md
+          
+          method_count=0
+          for dex_file in temp_dex/*.dex; do
+            if [ -f "$dex_file" ]; then
+              count=$(./dex2jar-2.4/d2j-dex2jar.sh "$dex_file" -o temp.jar 2>/dev/null && jar tf temp.jar | grep '\.class$' | wc -l || echo "0")
+              method_count=$((method_count + count))
+              echo "- $(basename "$dex_file"): $count methods" >> apk-analysis/summary.md
+            fi
+          done
+          
+          echo "- **Total estimated methods: $method_count**" >> apk-analysis/summary.md
+          
+          # Clean up
+          rm -rf temp_dex/ temp.jar dex2jar-2.4/ dex2jar-2.4.zip
+
+      - name: Compare with previous build
+        if: github.event_name == 'pull_request'
+        run: |
+          # Get base branch APK size for comparison
+          git checkout ${{ github.event.pull_request.base.sha }} || true
+          
+          if ./gradlew assembleDebug --stacktrace 2>/dev/null; then
+            BASE_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+            if [ -f "$BASE_APK" ]; then
+              BASE_SIZE=$(stat -c%s "$BASE_APK")
+              BASE_SIZE_MB=$(echo "scale=2; $BASE_SIZE/1048576" | bc)
+              
+              CURRENT_SIZE=${{ steps.apk-size.outputs.debug_apk_size }}
+              DIFF=$((CURRENT_SIZE - BASE_SIZE))
+              DIFF_MB=$(echo "scale=2; $DIFF/1048576" | bc)
+              
+              echo "" >> apk-analysis/summary.md
+              echo "## Size Comparison with Base Branch" >> apk-analysis/summary.md
+              echo "| Metric | Base | Current | Difference |" >> apk-analysis/summary.md
+              echo "|--------|------|---------|------------|" >> apk-analysis/summary.md
+              echo "| Size (MB) | $BASE_SIZE_MB | ${{ steps.apk-size.outputs.debug_apk_size_mb }} | $DIFF_MB |" >> apk-analysis/summary.md
+              echo "| Size (Bytes) | $BASE_SIZE | $CURRENT_SIZE | $DIFF |" >> apk-analysis/summary.md
+              
+              if [ $DIFF -gt 1048576 ]; then  # > 1MB increase
+                echo "" >> apk-analysis/summary.md
+                echo "⚠️ **Warning**: APK size increased by more than 1MB" >> apk-analysis/summary.md
+              elif [ $DIFF -lt -1048576 ]; then  # > 1MB decrease
+                echo "" >> apk-analysis/summary.md
+                echo "✅ **Great**: APK size decreased by more than 1MB" >> apk-analysis/summary.md
+              fi
+            fi
+          fi
+          
+          # Switch back to current branch
+          git checkout ${{ github.sha }}
 
       - name: Upload APK Analysis
         uses: actions/upload-artifact@v4
         with:
-          name: apk-analysis
-          path: apk-analysis/
+          name: apk-analysis-${{ github.run_id }}
+          path: |
+            apk-analysis/
+            ${{ steps.apk-size.outputs.debug_apk_path }}
+            ${{ steps.apk-size.outputs.release_apk_path }}
+          retention-days: 30
 
-      - name: Comment APK Size on PR
+      - name: Comment APK Analysis on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('apk-analysis/summary.md', 'utf8');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            })
+          path: apk-analysis/summary.md
+          header: apk-analysis
 
   performance-tests:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        api-level: [29, 33]
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,69 +193,208 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-performance-${{ matrix.api-level }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
       - name: Run performance tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: Nexus 6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
           script: |
-            # Install the app
-            ./gradlew installDebug
+            # Build and install the app
+            ./gradlew assembleDebug installDebug --stacktrace
             
-            # Run startup time measurement
-            adb shell am start-activity -W -n com.anti.rootadbcontroller/.MainActivity
-            
-            # Measure memory usage
+            # Wait for installation
             sleep 5
-            adb shell dumpsys meminfo com.anti.rootadbcontroller > memory_usage.txt
+            
+            # Get package name
+            PACKAGE_NAME=$(aapt dump badging app/build/outputs/apk/debug/app-debug.apk | grep package | awk '{print $2}' | sed "s/name='//" | sed "s/'//")
+            echo "Package name: $PACKAGE_NAME"
+            
+            # Measure startup time
+            echo "Measuring startup time..."
+            for i in {1..5}; do
+              adb shell am force-stop $PACKAGE_NAME
+              sleep 2
+              adb shell am start-activity -W -n $PACKAGE_NAME/.MainActivity >> startup_times.txt
+              sleep 3
+            done
+            
+            # Measure memory usage after startup
+            echo "Measuring memory usage..."
+            sleep 5
+            adb shell dumpsys meminfo $PACKAGE_NAME > memory_usage.txt
             
             # Measure frame rate (requires app to be running)
-            adb shell dumpsys gfxinfo com.anti.rootadbcontroller > frame_stats.txt
+            echo "Measuring frame rate..."
+            adb shell dumpsys gfxinfo $PACKAGE_NAME > frame_stats.txt
             
             # Battery usage measurement
-            adb shell dumpsys batterystats --charged com.anti.rootadbcontroller > battery_stats.txt
+            echo "Measuring battery usage..."
+            adb shell dumpsys batterystats --reset
+            sleep 10  # Let app run for a bit
+            adb shell dumpsys batterystats $PACKAGE_NAME > battery_stats.txt
+            
+            # CPU usage
+            echo "Measuring CPU usage..."
+            adb shell top -n 1 | grep $PACKAGE_NAME > cpu_usage.txt || echo "No CPU data" > cpu_usage.txt
 
       - name: Generate performance report
         run: |
           mkdir -p performance-report
-          echo "# Performance Test Results" > performance-report/summary.md
           
+          echo "# Performance Test Results (API ${{ matrix.api-level }})" > performance-report/summary.md
+          echo "" >> performance-report/summary.md
+          
+          # Startup time analysis
+          echo "## Startup Time Analysis" >> performance-report/summary.md
+          if [ -f startup_times.txt ]; then
+            echo "### Raw Startup Times" >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+            grep "TotalTime" startup_times.txt >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+            
+            # Calculate average startup time
+            avg_time=$(grep "TotalTime" startup_times.txt | awk '{sum+=$2; count++} END {if(count>0) print sum/count; else print "N/A"}')
+            echo "**Average startup time: ${avg_time}ms**" >> performance-report/summary.md
+          else
+            echo "No startup time data available" >> performance-report/summary.md
+          fi
+          echo "" >> performance-report/summary.md
+          
+          # Memory usage analysis
           echo "## Memory Usage" >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
-          grep -A 15 "App Summary" memory_usage.txt >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
+          if [ -f memory_usage.txt ]; then
+            echo '```' >> performance-report/summary.md
+            grep -A 15 "App Summary" memory_usage.txt >> performance-report/summary.md || echo "No memory summary found" >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+          else
+            echo "No memory usage data available" >> performance-report/summary.md
+          fi
+          echo "" >> performance-report/summary.md
           
-          echo "## Frame Stats" >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
-          grep -A 20 "Janky frames" frame_stats.txt >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
+          # Frame stats analysis
+          echo "## Frame Rate Performance" >> performance-report/summary.md
+          if [ -f frame_stats.txt ]; then
+            echo '```' >> performance-report/summary.md
+            grep -A 20 "Janky frames\|Total frames rendered" frame_stats.txt >> performance-report/summary.md || echo "No frame stats found" >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+          else
+            echo "No frame rate data available" >> performance-report/summary.md
+          fi
+          echo "" >> performance-report/summary.md
           
+          # CPU usage
+          echo "## CPU Usage" >> performance-report/summary.md
+          if [ -f cpu_usage.txt ] && [ -s cpu_usage.txt ]; then
+            echo '```' >> performance-report/summary.md
+            cat cpu_usage.txt >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+          else
+            echo "No CPU usage data available" >> performance-report/summary.md
+          fi
+          echo "" >> performance-report/summary.md
+          
+          # Battery usage
           echo "## Battery Usage" >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
-          grep -A 10 "Estimated power use" battery_stats.txt >> performance-report/summary.md
-          echo '```' >> performance-report/summary.md
+          if [ -f battery_stats.txt ]; then
+            echo '```' >> performance-report/summary.md
+            grep -A 10 "Estimated power use\|Battery History" battery_stats.txt >> performance-report/summary.md || echo "No battery stats found" >> performance-report/summary.md
+            echo '```' >> performance-report/summary.md
+          else
+            echo "No battery usage data available" >> performance-report/summary.md
+          fi
 
       - name: Upload performance report
         uses: actions/upload-artifact@v4
         with:
-          name: performance-report
-          path: performance-report/
+          name: performance-report-api-${{ matrix.api-level }}-${{ github.run_id }}
+          path: |
+            performance-report/
+            startup_times.txt
+            memory_usage.txt
+            frame_stats.txt
+            battery_stats.txt
+            cpu_usage.txt
+          retention-days: 30
 
       - name: Comment performance results on PR
         if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: performance-report/summary.md
+          header: performance-api-${{ matrix.api-level }}
+
+  performance-summary:
+    runs-on: ubuntu-latest
+    needs: [apk-analysis, performance-tests]
+    if: always() && github.event_name == 'pull_request'
+    
+    steps:
+      - name: Create performance summary
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('performance-report/summary.md', 'utf8');
+            const summary = `## 📊 Performance Test Summary
+            
+            ### Results Status
+            - **APK Analysis**: ${{ needs.apk-analysis.result }}
+            - **Performance Tests**: ${{ needs.performance-tests.result }}
+            
+            ### Key Metrics
+            - APK size analysis completed
+            - Startup time measurements taken
+            - Memory usage profiled
+            - Frame rate performance analyzed
+            - Battery usage measured
+            
+            📋 **Detailed reports are available in the individual comments above and in the workflow artifacts.**
+            
+            ${needs.apk-analysis.result === 'failure' || needs.performance-tests.result === 'failure' ? 
+              '⚠️ **Some performance tests failed. Please check the logs for details.**' : 
+              '✅ **All performance tests completed successfully.**'}
+            `;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: summary
-            })
+            });
