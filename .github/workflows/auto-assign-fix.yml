@@ -96,7 +96,10 @@ jobs:
       - name: Organize imports
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src -name "*.java" -o -name "*.kt" | while read file; do
+          if [ -d "app/src" ]; then
+            find app/src -name "*.java" -o -name "*.kt" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Sort imports
             if [[ "$file" == *.java ]]; then
               # For Java files
@@ -110,6 +113,8 @@ jobs:
               sed -i '/^import /!b;:a;N;/^import [^;]*$/!bb;s/\(.*\)\n\(import .*\)/\2\n\1/;ta;:b' "$file"
             fi
           done
+          fi
+          echo "Import organization completed"
 
       # Auto-fix String formatting in XML files
       - name: Fix XML string resources
