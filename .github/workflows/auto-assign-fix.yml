@@ -138,7 +138,10 @@ jobs:
       - name: Fix indentation and whitespace
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src -name "*.java" -o -name "*.kt" -o -name "*.xml" | while read file; do
+          if [ -d "app/src" ]; then
+            find app/src -name "*.java" -o -name "*.kt" -o -name "*.xml" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Remove trailing whitespace
             sed -i 's/[ \t]*$//' "$file"
 
@@ -147,6 +150,8 @@ jobs:
               echo "" >> "$file"
             fi
           done
+          fi
+          echo "Indentation and whitespace fixes completed"
 
       # Commit changes if any were made
       - name: Check for changes
