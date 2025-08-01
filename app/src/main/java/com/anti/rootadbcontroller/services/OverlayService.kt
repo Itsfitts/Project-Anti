@@ -19,11 +19,9 @@ import com.anti.rootadbcontroller.R
  */
 class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
-    private lateinit var overlayView: View
+    private var overlayView: View? = null
 
-    override fun onBind(intent: Intent): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -43,23 +41,24 @@ class OverlayService : Service() {
             layoutParamsType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
-        )
+        ).apply {
+            gravity = Gravity.CENTER
+            x = 0
+            y = 0
+        }
 
-        params.gravity = Gravity.CENTER
-        params.x = 0
-        params.y = 0
-
-        windowManager.addView(overlayView, params)
-
-        val closeButton = overlayView.findViewById<Button>(R.id.overlay_button)
-        closeButton.setOnClickListener { stopSelf() }
+        overlayView?.let { view ->
+            windowManager.addView(view, params)
+            
+            val closeButton = view.findViewById<Button>(R.id.overlay_button)
+            closeButton.setOnClickListener { stopSelf() }
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (::overlayView.isInitialized) {
-            windowManager.removeView(overlayView)
+        overlayView?.let { view ->
+            windowManager.removeView(view)
         }
     }
 }
-
