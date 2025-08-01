@@ -4,10 +4,77 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
 
 jobs:
-  release:
+  validate-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+            # Check if it's a pre-release (contains alpha, beta, rc, etc.)
+            if [[ "$VERSION" =~ (alpha|beta|rc|dev) ]]; then
+              IS_PRERELEASE="true"
+            else
+              IS_PRERELEASE="false"
+            fi
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+          echo "Is pre-release: $IS_PRERELEASE"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "::error::Invalid version format: $VERSION. Expected format: v1.0.0 or v1.0.0-alpha"
+            exit 1
+          fi
+
+  build-release:
+    runs-on: ubuntu-latest
+    needs: validate-release
+    timeout-minutes: 30
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,15 +86,43 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Update version in build files
+        run: |
+          VERSION="${{ needs.validate-release.outputs.version }}"
+          VERSION_CODE=$(date +%s)
+          VERSION_NAME="${VERSION#v}"
+          
+          # Update version in gradle.properties or build.gradle
+          if [ -f "gradle.properties" ]; then
+            sed -i "s/versionName=.*/versionName=$VERSION_NAME/" gradle.properties || true
+            sed -i "s/versionCode=.*/versionCode=$VERSION_CODE/" gradle.properties || true
+          fi
+          
+          echo "Updated version to $VERSION_NAME with code $VERSION_CODE"
+
+      - name: Run tests before release
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Run lint before release
+        run: ./gradlew lintRelease --stacktrace
+
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease --stacktrace
 
       - name: Sign APK
+        if: env.SIGNING_KEY != ''
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
@@ -37,20 +132,164 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+
+      - name: Sign AAB
+        if: env.SIGNING_KEY != ''
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+
+      - name: Generate checksums
+        run: |
+          cd app/build/outputs/apk/release
+          for file in *.apk; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              md5sum "$file" > "$file.md5"
+            fi
+          done
+          
+          cd ../../bundle/release
+          for file in *.aab; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              md5sum "$file" > "$file.md5"
+            fi
+          done
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.validate-release.outputs.version }}
+          path: |
+            app/build/outputs/apk/release/
+            app/build/outputs/bundle/release/
+          retention-days: 90
+
+  generate-changelog:
+    runs-on: ubuntu-latest
+    needs: validate-release
+    timeout-minutes: 10
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Generate Changelog
         id: changelog
-        uses: metcalfc/changelog-generator@v4.6.2
+        uses: mikepenz/release-changelog-builder-action@v4
         with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
+          configuration: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["feature", "enhancement"]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes",
+                  "labels": ["bug", "fix"]
+                },
+                {
+                  "title": "## 🔧 Maintenance",
+                  "labels": ["maintenance", "chore", "dependencies"]
+                },
+                {
+                  "title": "## 📚 Documentation",
+                  "labels": ["documentation", "docs"]
+                }
+              ],
+              "template": "#{{CHANGELOG}}\n\n## 📱 Installation\n\nDownload the APK from the assets below and install on your Android device.\n\n## 🔍 Verification\n\nVerify the integrity of downloaded files using the provided checksums:\n- SHA256: Check against `.sha256` files\n- MD5: Check against `.md5` files\n\n---\n\n**Full Changelog**: https://github.com/${{OWNER}}/${{REPO}}/compare/${{FROM_TAG}}...${{TO_TAG}}"
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [validate-release, build-release, generate-changelog]
+    timeout-minutes: 10
+    
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.validate-release.outputs.version }}
+          path: release-artifacts
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/*-signed.apk
-          body: ${{ steps.changelog.outputs.changelog }}
+          tag_name: ${{ needs.validate-release.outputs.version }}
+          name: Release ${{ needs.validate-release.outputs.version }}
+          body: ${{ needs.generate-changelog.outputs.changelog }}
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.validate-release.outputs.is_prerelease == 'true' }}
+          files: |
+            release-artifacts/**/*.apk
+            release-artifacts/**/*.aab
+            release-artifacts/**/*.sha256
+            release-artifacts/**/*.md5
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release notes with download stats
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: '${{ needs.validate-release.outputs.version }}'
+            });
+            
+            const assets = release.data.assets;
+            let assetInfo = '\n\n## 📦 Assets\n\n';
+            
+            assets.forEach(asset => {
+              const size = (asset.size / 1024 / 1024).toFixed(2);
+              assetInfo += `- **${asset.name}** (${size} MB) - ${asset.download_count} downloads\n`;
+            });
+            
+            const updatedBody = release.data.body + assetInfo;
+            
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              body: updatedBody
+            });
+
+  notify-release:
+    runs-on: ubuntu-latest
+    needs: [validate-release, create-release]
+    if: always() && needs.create-release.result == 'success'
+    
+    steps:
+      - name: Notify successful release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.validate-release.outputs.version }}';
+            const isPrerelease = '${{ needs.validate-release.outputs.is_prerelease }}' === 'true';
+            
+            const releaseType = isPrerelease ? 'Pre-release' : 'Release';
+            const emoji = isPrerelease ? '🚧' : '🎉';
+            
+            console.log(`${emoji} ${releaseType} ${version} has been successfully created!`);
+            
+            // You can add additional notification logic here
+            // For example, posting to Discord, Slack, or other services
