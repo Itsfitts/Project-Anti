@@ -2,50 +2,273 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
 
 jobs:
-  lint:
+  android-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Run Android Lint
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug --stacktrace
 
-      - name: Upload Lint Results
+      - name: Upload Android Lint Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lint-results
-          path: app/build/reports/lint-results-debug.html
+          name: android-lint-results-${{ github.run_id }}
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+          retention-days: 30
 
-  ktlint:
+      - name: Annotate Android Lint Issues
+        if: always()
+        uses: yutailang0119/action-android-lint@v4
+        with:
+          report-path: app/build/reports/lint-results-debug.xml
+        continue-on-error: true
+
+  kotlin-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Run KtLint
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run ktlint
         run: |
-          curl -sSLO https://github.com/pinterest/ktlint/releases/download/0.48.2/ktlint
-          chmod +x ktlint
-          ./ktlint --android "app/src/**/*.kt" --reporter=plain
+          ./gradlew ktlintCheck --stacktrace
+
+      - name: Upload ktlint Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktlint-results-${{ github.run_id }}
+          path: app/build/reports/ktlint/
+          retention-days: 30
+
+  detekt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Run Detekt
+        run: |
+          ./gradlew detekt --stacktrace || true
+
+      - name: Upload Detekt Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detekt-results-${{ github.run_id }}
+          path: |
+            app/build/reports/detekt/
+            build/reports/detekt/
+          retention-days: 30
+
+      - name: Annotate Detekt Issues
+        if: always()
+        uses: github/super-linter/slim@v5
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_KOTLIN: true
+          KOTLIN_KTLINT_CONFIG_FILE: .editorconfig
+        continue-on-error: true
+
+  sonarqube:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run tests for SonarQube
+        run: ./gradlew testDebugUnitTest jacocoTestReport --stacktrace
+
+      - name: SonarQube Scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            ./gradlew sonar \
+              -Dsonar.projectKey=HeartlessVeteran2_Project-Anti \
+              -Dsonar.organization=heartlessveteran2 \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.sources=app/src/main \
+              -Dsonar.tests=app/src/test \
+              -Dsonar.java.coveragePlugin=jacoco \
+              -Dsonar.coverage.jacoco.xmlReportPaths=app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml \
+              --stacktrace
+          else
+            echo "SONAR_TOKEN not available, skipping SonarQube analysis"
+          fi
+
+  code-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Generate code metrics
+        run: |
+          # Count lines of code
+          echo "## Code Metrics" > code-metrics.md
+          echo "" >> code-metrics.md
+          
+          # Kotlin files
+          kotlin_files=$(find app/src -name "*.kt" | wc -l)
+          kotlin_lines=$(find app/src -name "*.kt" -exec wc -l {} + | tail -1 | awk '{print $1}')
+          
+          # Java files
+          java_files=$(find app/src -name "*.java" | wc -l)
+          java_lines=$(find app/src -name "*.java" -exec wc -l {} + | tail -1 | awk '{print $1}' || echo "0")
+          
+          # XML files
+          xml_files=$(find app/src -name "*.xml" | wc -l)
+          xml_lines=$(find app/src -name "*.xml" -exec wc -l {} + | tail -1 | awk '{print $1}')
+          
+          echo "| Metric | Value |" >> code-metrics.md
+          echo "|--------|-------|" >> code-metrics.md
+          echo "| Kotlin Files | $kotlin_files |" >> code-metrics.md
+          echo "| Kotlin Lines | $kotlin_lines |" >> code-metrics.md
+          echo "| Java Files | $java_files |" >> code-metrics.md
+          echo "| Java Lines | $java_lines |" >> code-metrics.md
+          echo "| XML Files | $xml_files |" >> code-metrics.md
+          echo "| XML Lines | $xml_lines |" >> code-metrics.md
+          
+          cat code-metrics.md
+
+      - name: Upload code metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-metrics-${{ github.run_id }}
+          path: code-metrics.md
+          retention-days: 30
+
+      - name: Comment code metrics on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: code-metrics.md
+          header: code-metrics
+
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: [android-lint, kotlin-lint, detekt, code-metrics]
+    if: always()
+    
+    steps:
+      - name: Check quality gate
+        run: |
+          if [[ "${{ needs.android-lint.result }}" == "failure" ]]; then
+            echo "::error::Android Lint failed"
+            exit 1
+          fi
+          
+          if [[ "${{ needs.kotlin-lint.result }}" == "failure" ]]; then
+            echo "::error::Kotlin Lint (ktlint) failed"
+            exit 1
+          fi
+          
+          echo "Quality gate passed"
