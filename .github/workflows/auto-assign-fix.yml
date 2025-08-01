@@ -10,6 +10,9 @@ on:
 jobs:
   assign-issues:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Auto Assign Issues
         uses: pozil/auto-assign-issue@v2
