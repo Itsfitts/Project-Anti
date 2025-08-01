@@ -246,7 +246,7 @@ class FeatureHandler(private val context: Context) {
      * Sets clipboard content.
      */
     fun setClipboard(text: String) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         val clip = ClipData.newPlainText("label", text)
         clipboard.setPrimaryClip(clip)
     }
