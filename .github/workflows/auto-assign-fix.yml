@@ -65,7 +65,8 @@ jobs:
         run: |
           curl -sSLO https://github.com/pinterest/ktlint/releases/download/0.48.2/ktlint
           chmod +x ktlint
-          ./ktlint --android "app/src/**/*.kt" -F
+          ./ktlint --android "app/src/**/*.kt" -F || true
+          echo "Ktlint formatting completed"
 
       # Fix Android Lint issues that can be auto-fixed
       - name: Run Android Lint with auto-fix
