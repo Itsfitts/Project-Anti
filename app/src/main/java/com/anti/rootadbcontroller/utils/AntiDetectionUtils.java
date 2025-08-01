@@ -91,7 +91,9 @@ public class AntiDetectionUtils {
             try {
                 pm.getPackageInfo(packageName, 0);
                 return true;
-            } catch (PackageManager.NameNotFoundException ignored) {}
+            } catch (PackageManager.NameNotFoundException e) {
+                // Package not found, continue checking other packages
+            }
         }
         return false;
     }
@@ -139,7 +141,9 @@ public class AntiDetectionUtils {
                 pm.getPackageInfo(packageName, 0);
                 Log.w(TAG, "Detected analysis tool: " + packageName);
                 return true;
-            } catch (PackageManager.NameNotFoundException ignored) {}
+            } catch (PackageManager.NameNotFoundException e) {
+                // Package not found, continue checking other packages
+            }
         }
         return false;
     }
