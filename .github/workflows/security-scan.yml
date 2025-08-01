@@ -9,9 +9,20 @@ on:
     - cron: '0 2 * * 1' # Run weekly at 2am on Monday
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
-  security-scan:
+  dependency-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,100 +34,299 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
 
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
+        id: dependency-check
         with:
           project: 'Project-Anti'
           path: '.'
-          format: 'HTML'
+          format: 'ALL'
           out: 'reports'
           args: >
             --enableExperimental
             --scan **/*.gradle
             --scan **/*.gradle.kts
             --scan app/libs
+            --suppression dependency-check-suppressions.xml
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
 
       - name: Upload Dependency Check Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dependency-check-report
+          name: dependency-check-report-${{ github.run_id }}
           path: reports
+          retention-days: 30
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/dependency-check-report.sarif
+        continue-on-error: true
+
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java-kotlin' ]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Build for CodeQL
+        run: |
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  sonarqube-security:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 25
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run tests for SonarQube
+        run: ./gradlew testDebugUnitTest jacocoTestReport --stacktrace
+
+      - name: SonarQube Security Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=tokenblkguy_Project-Anti
-            -Dsonar.organization=tokenblkguy-github
-            -Dsonar.sources=app/src/main
-
-      - name: Android Lints Security Check
         run: |
-          ./gradlew lintDebug
+          if [ -n "$SONAR_TOKEN" ]; then
+            ./gradlew sonar \
+              -Dsonar.projectKey=HeartlessVeteran2_Project-Anti \
+              -Dsonar.organization=heartlessveteran2 \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.sources=app/src/main \
+              -Dsonar.tests=app/src/test \
+              -Dsonar.java.coveragePlugin=jacoco \
+              -Dsonar.coverage.jacoco.xmlReportPaths=app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml \
+              -Dsonar.qualitygate.wait=true \
+              --stacktrace
+          else
+            echo "SONAR_TOKEN not available, skipping SonarQube security analysis"
+          fi
 
-      - name: Upload Lint Results
-        uses: actions/upload-artifact@v4
+  secrets-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          name: lint-results
-          path: app/build/reports/lint-results-debug.html
+          fetch-depth: 0
 
-      - name: Check for Hardcoded Secrets
+      - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
-      - name: Check for Permissions Issues
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  android-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - name: Android Lint Security Check
+        run: |
+          ./gradlew lintDebug --stacktrace
+
+      - name: Check for Security Issues in Manifest
         run: |
           mkdir -p security-reports
           
-          # Check for excessive permissions in AndroidManifest.xml
-          echo "# Permission Analysis" > security-reports/permissions.md
-          echo "## Permissions Requested in Manifest:" >> security-reports/permissions.md
-          grep -r "uses-permission" app/src/main/AndroidManifest.xml | sort | uniq >> security-reports/permissions.md
+          echo "# Android Security Analysis" > security-reports/android-security.md
+          echo "" >> security-reports/android-security.md
           
-          # Count dangerous permissions
-          echo "## Dangerous Permissions Count:" >> security-reports/permissions.md
-          grep -r "android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.ACCESS_FINE_LOCATION\|android.permission.READ_CONTACTS\|android.permission.READ_CALENDAR\|android.permission.READ_EXTERNAL_STORAGE\|android.permission.WRITE_EXTERNAL_STORAGE\|android.permission.READ_CALL_LOG\|android.permission.READ_SMS" app/src/main/AndroidManifest.xml | wc -l >> security-reports/permissions.md
+          # Check AndroidManifest.xml exists
+          if [ -f "app/src/main/AndroidManifest.xml" ]; then
+            echo "## Permissions Analysis" >> security-reports/android-security.md
+            echo "### Permissions Requested:" >> security-reports/android-security.md
+            grep -r "uses-permission" app/src/main/AndroidManifest.xml | sort | uniq >> security-reports/android-security.md || echo "No permissions found" >> security-reports/android-security.md
+            
+            echo "" >> security-reports/android-security.md
+            echo "### Dangerous Permissions:" >> security-reports/android-security.md
+            dangerous_perms=$(grep -c "android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.ACCESS_FINE_LOCATION\|android.permission.READ_CONTACTS\|android.permission.READ_CALENDAR\|android.permission.READ_EXTERNAL_STORAGE\|android.permission.WRITE_EXTERNAL_STORAGE\|android.permission.READ_CALL_LOG\|android.permission.READ_SMS" app/src/main/AndroidManifest.xml || echo "0")
+            echo "Count: $dangerous_perms" >> security-reports/android-security.md
+            
+            echo "" >> security-reports/android-security.md
+            echo "### Exported Components:" >> security-reports/android-security.md
+            grep -r "android:exported=\"true\"" app/src/main/AndroidManifest.xml >> security-reports/android-security.md || echo "No exported components found" >> security-reports/android-security.md
+            
+            echo "" >> security-reports/android-security.md
+            echo "### Debug Settings:" >> security-reports/android-security.md
+            grep -r "android:debuggable" app/src/main/AndroidManifest.xml >> security-reports/android-security.md || echo "No debug settings found" >> security-reports/android-security.md
+            
+            echo "" >> security-reports/android-security.md
+            echo "### Network Security Config:" >> security-reports/android-security.md
+            grep -r "android:networkSecurityConfig" app/src/main/AndroidManifest.xml >> security-reports/android-security.md || echo "No network security config found" >> security-reports/android-security.md
+          else
+            echo "AndroidManifest.xml not found" >> security-reports/android-security.md
+          fi
 
-      - name: Upload Security Reports
+      - name: Check for Hardcoded Secrets in Code
+        run: |
+          echo "" >> security-reports/android-security.md
+          echo "## Code Security Issues" >> security-reports/android-security.md
+          
+          # Check for potential API keys or secrets
+          echo "### Potential Hardcoded Secrets:" >> security-reports/android-security.md
+          grep -r -i "api_key\|secret\|password\|token" app/src/main --include="*.kt" --include="*.java" | head -10 >> security-reports/android-security.md || echo "No potential secrets found" >> security-reports/android-security.md
+          
+          # Check for HTTP URLs (should use HTTPS)
+          echo "" >> security-reports/android-security.md
+          echo "### HTTP URLs (should use HTTPS):" >> security-reports/android-security.md
+          grep -r "http://" app/src/main --include="*.kt" --include="*.java" --include="*.xml" >> security-reports/android-security.md || echo "No HTTP URLs found" >> security-reports/android-security.md
+
+      - name: Upload Android Security Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports
+          name: android-security-report-${{ github.run_id }}
           path: security-reports
+          retention-days: 30
 
-      - name: Comment on PR with Security Issues
-        if: github.event_name == 'pull_request' && (steps.gitleaks.outcome == 'failure' || steps.dependency-check.outcome == 'failure')
-        uses: actions/github-script@v7
+      - name: Upload Android Lint Results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            let securityIssues = "# ⚠️ Security Issues Detected\n\n";
-            
-            if (fs.existsSync('reports/dependency-check-report.html')) {
-              securityIssues += "- Dependency vulnerabilities found. Please check the uploaded artifacts for details.\n";
-            }
-            
-            if (fs.existsSync('security-reports/permissions.md')) {
-              const permissions = fs.readFileSync('security-reports/permissions.md', 'utf8');
-              securityIssues += "\n## Permissions Analysis\n" + permissions;
-            }
-            
-            securityIssues += "\nPlease review these security concerns before merging.";
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: securityIssues
-            })
+          name: android-lint-security-${{ github.run_id }}
+          path: app/build/reports/lint-results-debug.html
+          retention-days: 30
 
-      - name: Fail if secrets found
-        if: steps.gitleaks.outcome == 'failure'
+  security-summary:
+    runs-on: ubuntu-latest
+    needs: [dependency-check, codeql-analysis, secrets-scan, android-security]
+    if: always() && github.event_name == 'pull_request'
+    
+    steps:
+      - name: Download security reports
+        uses: actions/download-artifact@v4
+        with:
+          path: security-artifacts
+          pattern: "*security*"
+
+      - name: Create security summary
         run: |
-          echo "::error::Secrets found in code! Please check the Gitleaks report."
-          exit 1
+          echo "# 🔒 Security Scan Summary" > security-summary.md
+          echo "" >> security-summary.md
+          
+          # Check job results
+          echo "## Scan Results" >> security-summary.md
+          echo "| Scan Type | Status |" >> security-summary.md
+          echo "|-----------|--------|" >> security-summary.md
+          echo "| Dependency Check | ${{ needs.dependency-check.result }} |" >> security-summary.md
+          echo "| CodeQL Analysis | ${{ needs.codeql-analysis.result }} |" >> security-summary.md
+          echo "| Secrets Scan | ${{ needs.secrets-scan.result }} |" >> security-summary.md
+          echo "| Android Security | ${{ needs.android-security.result }} |" >> security-summary.md
+          echo "" >> security-summary.md
+          
+          # Add recommendations
+          echo "## Security Recommendations" >> security-summary.md
+          echo "- Review all security scan results in the uploaded artifacts" >> security-summary.md
+          echo "- Address any high or critical severity issues before merging" >> security-summary.md
+          echo "- Ensure no secrets are hardcoded in the source code" >> security-summary.md
+          echo "- Verify that all network communications use HTTPS" >> security-summary.md
+          echo "- Review Android permissions and ensure they are necessary" >> security-summary.md
+
+      - name: Comment security summary on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: security-summary.md
+          header: security-summary
+
+      - name: Fail if critical security issues found
+        run: |
+          if [[ "${{ needs.secrets-scan.result }}" == "failure" ]]; then
+            echo "::error::Critical security issue: Secrets found in code!"
+            exit 1
+          fi
+          
+          if [[ "${{ needs.dependency-check.result }}" == "failure" ]]; then
+            echo "::warning::Dependency vulnerabilities found. Please review."
+          fi
