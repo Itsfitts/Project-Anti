@@ -32,7 +32,7 @@ class LocationTrackerService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun fetchLocation() {
-        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager?
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         if (locationManager == null) {
             Log.e(TAG, "Location Manager not found")
             return
