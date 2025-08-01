@@ -120,7 +120,10 @@ jobs:
       - name: Fix XML string resources
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-fix') }}
         run: |
-          find app/src/main/res/values -name "*.xml" | while read file; do
+          if [ -d "app/src/main/res/values" ]; then
+            find app/src/main/res/values -name "*.xml" 2>/dev/null | while read file; do
+              [ -f "$file" ] || continue
+              
             # Replace straight quotes with curly quotes in string resources
             sed -i 's/<string name="\([^"]*\)">\([^<]*\)">\([^<]*\)<\/string>/<string name="\1">\2">\3<\/string>/g' "$file"
             sed -i 's/<string name="\([^"]*\)">\([^<]*\)">\([^<]*\)<\/string>/<string name="\1">\2">\3<\/string>/g' "$file"
@@ -128,6 +131,8 @@ jobs:
             # Ensure proper apostrophes
             sed -i "s/<string name=\"\([^\"]*\)\">\([^<]*\)'>\([^<]*\)<\/string>/<string name=\"\1\">\2'>\3<\/string>/g" "$file"
           done
+          fi
+          echo "XML string resource fixes completed"
 
       # Fix indentation and whitespace issues
       - name: Fix indentation and whitespace
