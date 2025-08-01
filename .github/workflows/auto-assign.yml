@@ -27,6 +27,7 @@ jobs:
               issue_number: number,
               assignees: [userLogin]
             });
+          }
 
   auto-fix:
     runs-on: ubuntu-latest
