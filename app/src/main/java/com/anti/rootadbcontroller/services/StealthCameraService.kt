@@ -85,8 +85,6 @@ class StealthCameraService : Service() {
             manager.openCamera(cameraId, stateCallback, backgroundHandler)
         } catch (e: CameraAccessException) {
             Log.e(TAG, "Cannot access camera", e)
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Camera permission not granted", e)
         }
     }
 

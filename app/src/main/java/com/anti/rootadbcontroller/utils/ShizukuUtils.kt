@@ -176,10 +176,6 @@ class ShizukuUtils private constructor() {
         } catch (e: IOException) {
             Log.e(TAG, "Error reading process output", e)
             CommandResult(false, "", e.message ?: "Unknown error", -1)
-        } catch (e: InterruptedException) {
-            Log.e(TAG, "Error reading process output", e)
-            Thread.currentThread().interrupt()
-            CommandResult(false, "", e.message ?: "Unknown error", -1)
         }
     }
 
