@@ -218,7 +218,7 @@ class FeatureHandler(private val context: Context) {
      * Detects camera and microphone usage.
      */
     fun detectCameraMicUsage() {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         val report = StringBuilder("Camera/Mic Status:\n")
         report.append("Microphone active: ${!audioManager.isMicrophoneMute}\n")
         // Camera usage detection is more complex and requires callbacks. This is a simplified check.
