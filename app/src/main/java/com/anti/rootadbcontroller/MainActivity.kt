@@ -180,7 +180,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleKillSwitch() {
-        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        val alarmManager = getSystemService(ALARM_SERVICE) as? AlarmManager ?: return
         val intent = Intent(this, com.anti.rootadbcontroller.services.KillSwitchReceiver::class.java)
 
         // Use appropriate flags based on Android version
