@@ -314,7 +314,7 @@ class FeatureHandler(private val context: Context) {
      * Checks if a service is running.
      */
     private fun isServiceRunning(serviceClass: Class<*>): Boolean {
-        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false
         @Suppress("DEPRECATION")
         return manager.getRunningServices(Integer.MAX_VALUE).any {
             serviceClass.name == it.service.className
