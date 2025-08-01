@@ -1,62 +1,361 @@
-name: Auto-delete Branch After Merge
+name: Repository Cleanup
+
 on:
   pull_request:
     types: [closed]
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sunday at 2 AM UTC
+  workflow_dispatch:
+    inputs:
+      cleanup_type:
+        description: 'Type of cleanup to perform'
+        required: true
+        type: choice
+        options:
+          - 'all'
+          - 'artifacts'
+          - 'branches'
+          - 'caches'
+        default: 'all'
+      days_old:
+        description: 'Delete items older than X days'
+        required: false
+        type: number
+        default: 7
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
 
 jobs:
-  delete-branch:
-    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref != 'main' && github.event.pull_request.head.ref != 'develop'
+  delete-merged-branch:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    timeout-minutes: 5
+    
     steps:
-    - name: Delete merged branch
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { owner, repo } = context.repo;
-          const branchName = context.payload.pull_request.head.ref;
+      - name: Delete merged branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const branchName = context.payload.pull_request.head.ref;
+            const baseBranch = context.payload.pull_request.base.ref;
+            
+            // Don't delete protected branches
+            const protectedBranches = ['main', 'develop', 'master', 'release', 'staging'];
+            
+            if (protectedBranches.includes(branchName)) {
+              console.log(`Skipping deletion of protected branch: ${branchName}`);
+              return;
+            }
+            
+            // Don't delete if it's from a fork
+            if (context.payload.pull_request.head.repo.full_name !== context.payload.pull_request.base.repo.full_name) {
+              console.log(`Skipping deletion of fork branch: ${branchName}`);
+              return;
+            }
 
-          try {
-            await github.rest.git.deleteRef({
-              owner,
-              repo,
-              ref: `heads/${branchName}`
-            });
-            console.log(`Successfully deleted branch: ${branchName}`);
-          } catch (error) {
-            console.log(`Failed to delete branch ${branchName}: ${error.message}`);
-          }
+            try {
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `heads/${branchName}`
+              });
+              console.log(`✅ Successfully deleted branch: ${branchName}`);
+              
+              // Add a comment to the PR
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: context.payload.pull_request.number,
+                body: `🧹 Automatically deleted branch \`${branchName}\` after merge.`
+              });
+              
+            } catch (error) {
+              console.log(`❌ Failed to delete branch ${branchName}: ${error.message}`);
+              
+              // Only comment on error if it's not a "not found" error
+              if (!error.message.includes('Not Found')) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: `⚠️ Could not automatically delete branch \`${branchName}\`: ${error.message}`
+                });
+              }
+            }
 
   cleanup-artifacts:
     runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    timeout-minutes: 15
+    
     steps:
-    - name: Delete old artifacts
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { owner, repo } = context.repo;
-
-          const artifacts = await github.rest.actions.listArtifactsForRepo({
-            owner,
-            repo,
-            per_page: 100
-          });
-
-          const oldArtifacts = artifacts.data.artifacts.filter(artifact => {
-            const createdDate = new Date(artifact.created_at);
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            return createdDate < sevenDaysAgo;
-          });
-
-          for (const artifact of oldArtifacts) {
-            try {
-              await github.rest.actions.deleteArtifact({
+      - name: Cleanup old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const daysOld = ${{ github.event.inputs.days_old || 7 }};
+            const cleanupType = '${{ github.event.inputs.cleanup_type || 'all' }}';
+            
+            if (cleanupType !== 'all' && cleanupType !== 'artifacts') {
+              console.log('Skipping artifact cleanup based on cleanup_type input');
+              return;
+            }
+            
+            console.log(`🧹 Cleaning up artifacts older than ${daysOld} days...`);
+            
+            let page = 1;
+            let totalDeleted = 0;
+            let totalSize = 0;
+            
+            while (true) {
+              const artifacts = await github.rest.actions.listArtifactsForRepo({
                 owner,
                 repo,
-                artifact_id: artifact.id
+                per_page: 100,
+                page: page
               });
-              console.log(`Deleted artifact: ${artifact.name}`);
-            } catch (error) {
-              console.log(`Failed to delete artifact ${artifact.name}: ${error.message}`);
+              
+              if (artifacts.data.artifacts.length === 0) {
+                break;
+              }
+              
+              const cutoffDate = new Date();
+              cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+              
+              const oldArtifacts = artifacts.data.artifacts.filter(artifact => {
+                const createdDate = new Date(artifact.created_at);
+                return createdDate < cutoffDate;
+              });
+              
+              console.log(`Found ${oldArtifacts.length} old artifacts on page ${page}`);
+              
+              for (const artifact of oldArtifacts) {
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner,
+                    repo,
+                    artifact_id: artifact.id
+                  });
+                  
+                  totalDeleted++;
+                  totalSize += artifact.size_in_bytes;
+                  console.log(`✅ Deleted artifact: ${artifact.name} (${(artifact.size_in_bytes / 1024 / 1024).toFixed(2)} MB)`);
+                  
+                } catch (error) {
+                  console.log(`❌ Failed to delete artifact ${artifact.name}: ${error.message}`);
+                }
+              }
+              
+              page++;
+              
+              // Safety break to avoid infinite loops
+              if (page > 50) {
+                console.log('Reached maximum page limit, stopping cleanup');
+                break;
+              }
             }
-          }
+            
+            const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+            console.log(`🎉 Cleanup complete! Deleted ${totalDeleted} artifacts, freed ${totalSizeMB} MB`);
+            
+            // Set outputs for summary
+            core.setOutput('deleted_count', totalDeleted);
+            core.setOutput('freed_space_mb', totalSizeMB);
+
+  cleanup-old-branches:
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event.inputs.cleanup_type == 'all' || github.event.inputs.cleanup_type == 'branches' || github.event.inputs.cleanup_type == null)
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cleanup stale branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const daysOld = ${{ github.event.inputs.days_old || 30 }};  // More conservative for branches
+            
+            console.log(`🧹 Cleaning up branches older than ${daysOld} days...`);
+            
+            // Get all branches
+            const branches = await github.rest.repos.listBranches({
+              owner,
+              repo,
+              per_page: 100
+            });
+            
+            const protectedBranches = ['main', 'develop', 'master', 'release', 'staging'];
+            let deletedCount = 0;
+            
+            for (const branch of branches.data) {
+              // Skip protected branches
+              if (protectedBranches.includes(branch.name)) {
+                continue;
+              }
+              
+              try {
+                // Get the last commit date for the branch
+                const commit = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: branch.commit.sha
+                });
+                
+                const lastCommitDate = new Date(commit.data.commit.committer.date);
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+                
+                if (lastCommitDate < cutoffDate) {
+                  // Check if branch has any open PRs
+                  const prs = await github.rest.pulls.list({
+                    owner,
+                    repo,
+                    head: `${owner}:${branch.name}`,
+                    state: 'open'
+                  });
+                  
+                  if (prs.data.length === 0) {
+                    // Safe to delete
+                    await github.rest.git.deleteRef({
+                      owner,
+                      repo,
+                      ref: `heads/${branch.name}`
+                    });
+                    
+                    deletedCount++;
+                    console.log(`✅ Deleted stale branch: ${branch.name} (last commit: ${lastCommitDate.toISOString()})`);
+                  } else {
+                    console.log(`⏭️ Skipping branch ${branch.name} - has open PRs`);
+                  }
+                }
+                
+              } catch (error) {
+                console.log(`❌ Failed to process branch ${branch.name}: ${error.message}`);
+              }
+            }
+            
+            console.log(`🎉 Branch cleanup complete! Deleted ${deletedCount} stale branches`);
+            core.setOutput('deleted_branches', deletedCount);
+
+  cleanup-caches:
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event.inputs.cleanup_type == 'all' || github.event.inputs.cleanup_type == 'caches' || github.event.inputs.cleanup_type == null)
+    timeout-minutes: 10
+    
+    steps:
+      - name: Cleanup old caches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const daysOld = ${{ github.event.inputs.days_old || 7 }};
+            
+            console.log(`🧹 Cleaning up caches older than ${daysOld} days...`);
+            
+            try {
+              const caches = await github.rest.actions.getActionsCacheList({
+                owner,
+                repo,
+                per_page: 100
+              });
+              
+              const cutoffDate = new Date();
+              cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+              
+              let deletedCount = 0;
+              let totalSize = 0;
+              
+              for (const cache of caches.data.actions_caches) {
+                const createdDate = new Date(cache.created_at);
+                
+                if (createdDate < cutoffDate) {
+                  try {
+                    await github.rest.actions.deleteActionsCacheById({
+                      owner,
+                      repo,
+                      cache_id: cache.id
+                    });
+                    
+                    deletedCount++;
+                    totalSize += cache.size_in_bytes;
+                    console.log(`✅ Deleted cache: ${cache.key} (${(cache.size_in_bytes / 1024 / 1024).toFixed(2)} MB)`);
+                    
+                  } catch (error) {
+                    console.log(`❌ Failed to delete cache ${cache.key}: ${error.message}`);
+                  }
+                }
+              }
+              
+              const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+              console.log(`🎉 Cache cleanup complete! Deleted ${deletedCount} caches, freed ${totalSizeMB} MB`);
+              
+              core.setOutput('deleted_caches', deletedCount);
+              core.setOutput('freed_cache_space_mb', totalSizeMB);
+              
+            } catch (error) {
+              console.log(`❌ Cache cleanup failed: ${error.message}`);
+              // Cache API might not be available in all cases
+            }
+
+  cleanup-summary:
+    runs-on: ubuntu-latest
+    needs: [cleanup-artifacts, cleanup-old-branches, cleanup-caches]
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    
+    steps:
+      - name: Generate cleanup summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactsDeleted = '${{ needs.cleanup-artifacts.outputs.deleted_count || 0 }}';
+            const artifactsSpace = '${{ needs.cleanup-artifacts.outputs.freed_space_mb || 0 }}';
+            const branchesDeleted = '${{ needs.cleanup-old-branches.outputs.deleted_branches || 0 }}';
+            const cachesDeleted = '${{ needs.cleanup-caches.outputs.deleted_caches || 0 }}';
+            const cacheSpace = '${{ needs.cleanup-caches.outputs.freed_cache_space_mb || 0 }}';
+            
+            const summary = `# 🧹 Repository Cleanup Summary
+            
+            ## Cleanup Results
+            | Category | Items Deleted | Space Freed |
+            |----------|---------------|-------------|
+            | Artifacts | ${artifactsDeleted} | ${artifactsSpace} MB |
+            | Branches | ${branchesDeleted} | N/A |
+            | Caches | ${cachesDeleted} | ${cacheSpace} MB |
+            
+            ## Total Impact
+            - **Total items cleaned**: ${parseInt(artifactsDeleted) + parseInt(branchesDeleted) + parseInt(cachesDeleted)}
+            - **Total space freed**: ${(parseFloat(artifactsSpace) + parseFloat(cacheSpace)).toFixed(2)} MB
+            
+            ## Next Cleanup
+            The next scheduled cleanup will run on Sunday at 2 AM UTC.
+            
+            You can also trigger manual cleanup using the "Run workflow" button with custom parameters.
+            `;
+            
+            console.log(summary);
+            
+            // Create an issue with the summary if significant cleanup was performed
+            const totalItems = parseInt(artifactsDeleted) + parseInt(branchesDeleted) + parseInt(cachesDeleted);
+            
+            if (totalItems > 10) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🧹 Weekly Cleanup Summary - ${new Date().toISOString().split('T')[0]}`,
+                body: summary,
+                labels: ['maintenance', 'automated']
+              });
+            }
