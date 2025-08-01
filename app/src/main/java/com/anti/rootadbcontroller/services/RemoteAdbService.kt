@@ -97,7 +97,7 @@ class RemoteAdbService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun setupNetworkCallback() {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
         val networkRequest = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
