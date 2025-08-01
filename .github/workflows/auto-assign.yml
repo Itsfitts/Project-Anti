@@ -17,12 +17,16 @@ jobs:
       with:
         script: |
           const { owner, repo, number } = context.issue;
-          await github.rest.issues.addAssignees({
-            owner,
-            repo,
-            issue_number: number,
-            assignees: [context.payload.pull_request.user.login]
-          });
+          const userLogin = context.payload.pull_request.user.login;
+          
+          // Skip assignment for bot users
+          if (!userLogin.includes('[bot]')) {
+            await github.rest.issues.addAssignees({
+              owner,
+              repo,
+              issue_number: number,
+              assignees: [userLogin]
+            });
 
   auto-fix:
     runs-on: ubuntu-latest
