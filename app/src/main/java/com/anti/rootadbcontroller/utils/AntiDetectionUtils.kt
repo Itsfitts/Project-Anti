@@ -100,7 +100,7 @@ object AntiDetectionUtils {
      * Check telephony for emulator characteristics
      */
     private fun checkTelephony(context: Context): Boolean {
-        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager?
+        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
         if (tm == null) return false
         val networkOperator = tm.networkOperatorName
         return "Android".equals(networkOperator, ignoreCase = true)
