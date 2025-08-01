@@ -17,6 +17,10 @@ This document summarizes the comprehensive migration and cleanup performed on th
 - `RootUtils.java` → `RootUtils.kt`
 - `AntiDetectionUtils.java` → `AntiDetectionUtils.kt` 
 - `KeyloggerAccessibilityService.java` → `KeyloggerAccessibilityService.kt`
+- `AutomationUtils.java` → `AutomationUtils.kt`
+- `OverlayService.java` → `OverlayService.kt`
+- `ShizukuCallbacks.java` → `ShizukuCallbacks.kt`
+- `PermissionTest.java` → `PermissionTest.kt`
 - Removed duplicate Java versions of:
   - `AdbUtils.java` (Kotlin version already existed)
   - `ShizukuUtils.java` (Kotlin version already existed)
