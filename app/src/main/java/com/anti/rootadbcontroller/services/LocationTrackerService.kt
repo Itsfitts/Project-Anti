@@ -75,4 +75,3 @@ class LocationTrackerService : Service() {
         private const val TAG = "LocationTrackerService"
     }
 }
-

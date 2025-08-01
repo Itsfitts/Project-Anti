@@ -1,7 +1,6 @@
 package com.anti.rootadbcontroller.utils
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.hardware.SensorManager
 import android.os.Build
@@ -19,21 +18,26 @@ object AntiDetectionUtils {
 
     // Known emulator characteristics
     private val KNOWN_PIPES = arrayOf(
-        "/dev/socket/qemud", "/dev/qemu_pipe"
+        "/dev/socket/qemud",
+        "/dev/qemu_pipe",
     )
 
     private val KNOWN_FILES = arrayOf(
         "/system/lib/libc_malloc_debug_qemu.so",
-        "/sys/qemu_trace", "/system/bin/qemu-props"
+        "/sys/qemu_trace",
+        "/system/bin/qemu-props",
     )
 
     private val KNOWN_GENY_FILES = arrayOf(
-        "/dev/socket/genyd", "/dev/socket/baseband_genyd"
+        "/dev/socket/genyd",
+        "/dev/socket/baseband_genyd",
     )
 
     private val KNOWN_PACKAGES = arrayOf(
         "com.google.android.launcher.layouts.genymotion",
-        "com.bluestacks", "com.bignox.app", "com.vphone.launcher"
+        "com.bluestacks",
+        "com.bignox.app",
+        "com.vphone.launcher",
     )
 
     /**
@@ -43,11 +47,11 @@ object AntiDetectionUtils {
      */
     fun isEmulator(context: Context): Boolean {
         return checkBuild() ||
-                checkFiles() ||
-                checkPackages(context) ||
-                checkTelephony(context) ||
-                checkDebugger() ||
-                checkSensors(context)
+            checkFiles() ||
+            checkPackages(context) ||
+            checkTelephony(context) ||
+            checkDebugger() ||
+            checkSensors(context)
     }
 
     /**
@@ -55,13 +59,13 @@ object AntiDetectionUtils {
      */
     private fun checkBuild(): Boolean {
         return Build.FINGERPRINT.startsWith("generic") ||
-                Build.FINGERPRINT.startsWith("unknown") ||
-                Build.MODEL.contains("google_sdk") ||
-                Build.MODEL.contains("Emulator") ||
-                Build.MODEL.contains("Android SDK built for") ||
-                Build.MANUFACTURER.contains("Genymotion") ||
-                Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
-                "google_sdk" == Build.PRODUCT
+            Build.FINGERPRINT.startsWith("unknown") ||
+            Build.MODEL.contains("google_sdk") ||
+            Build.MODEL.contains("Emulator") ||
+            Build.MODEL.contains("Android SDK built for") ||
+            Build.MANUFACTURER.contains("Genymotion") ||
+            Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
+            "google_sdk" == Build.PRODUCT
     }
 
     /**
@@ -131,7 +135,7 @@ object AntiDetectionUtils {
             "de.robv.android.xposed.installer",
             "io.va.exposed",
             "com.saurik.substrate",
-            "com.topjohnwu.magisk"
+            "com.topjohnwu.magisk",
         )
         val pm = context.packageManager
         for (packageName in analysisPackages) {
@@ -166,7 +170,7 @@ object AntiDetectionUtils {
     fun isDeveloperModeEnabled(context: Context): Boolean {
         return Settings.Secure.getInt(
             context.contentResolver,
-            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
+            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0,
         ) != 0
     }
 }
