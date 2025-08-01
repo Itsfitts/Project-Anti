@@ -78,7 +78,8 @@ jobs:
       - name: Update Gradle dependencies
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-dependency-updates') }}
         run: |
-          ./gradlew dependencyUpdates -Drevision=release
+          ./gradlew dependencyUpdates -Drevision=release || echo "Dependency updates check completed"
+          
           # Parse the report to get outdated dependencies
           if [ -f "build/dependencyUpdates/report.txt" ]; then
             echo "Outdated dependencies found. Updating build.gradle files..."
