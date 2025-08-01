@@ -117,7 +117,7 @@ object AntiDetectionUtils {
      * Check for the presence of sensors, which are often missing in emulators
      */
     private fun checkSensors(context: Context): Boolean {
-        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager?
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         return sm != null && sm.getSensorList(android.hardware.Sensor.TYPE_ALL).isNotEmpty()
     }
 
