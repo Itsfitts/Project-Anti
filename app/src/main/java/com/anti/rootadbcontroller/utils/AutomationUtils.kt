@@ -2,12 +2,10 @@ package com.anti.rootadbcontroller.utils
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.Environment
 import android.util.Log
 import com.anti.rootadbcontroller.services.RemoteAdbService
-import com.anti.rootadbcontroller.services.ShizukuCallbacks
 import com.anti.rootadbcontroller.services.ShizukuManagerService
 import java.io.File
 import java.io.FileWriter
@@ -196,7 +194,7 @@ object AutomationUtils {
             KEY_AUTO_REMOTE_ADB,
             KEY_AUTO_SYSTEM_INFO,
             KEY_AUTO_PACKAGE_LIST,
-            KEY_AUTO_NETWORK_INFO
+            KEY_AUTO_NETWORK_INFO,
         )
     }
 

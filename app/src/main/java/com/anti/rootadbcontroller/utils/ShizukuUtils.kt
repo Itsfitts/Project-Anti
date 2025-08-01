@@ -69,7 +69,9 @@ class ShizukuUtils private constructor() {
     fun hasShizukuPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-        } else true
+        } else {
+            true
+        }
     }
 
     /**
@@ -203,7 +205,7 @@ class ShizukuUtils private constructor() {
         val isSuccess: Boolean,
         val output: String,
         val error: String,
-        val exitCode: Int
+        val exitCode: Int,
     )
 
     companion object {
@@ -221,4 +223,3 @@ class ShizukuUtils private constructor() {
             }
     }
 }
-

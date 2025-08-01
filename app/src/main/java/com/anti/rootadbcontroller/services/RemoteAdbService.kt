@@ -171,7 +171,6 @@ class RemoteAdbService : Service() {
                 clientToAdb.join()
                 adbToClient.join()
             }
-
         } catch (e: IOException) {
             Log.e(TAG, "Error handling client $clientAddress", e)
         } finally {
@@ -190,7 +189,7 @@ class RemoteAdbService : Service() {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
                 "Remote ADB Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_DEFAULT,
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
@@ -200,8 +199,10 @@ class RemoteAdbService : Service() {
     private fun createNotification(text: String): Notification {
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
+            this,
+            0,
+            notificationIntent,
+            PendingIntent.FLAG_IMMUTABLE,
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -220,4 +221,3 @@ class RemoteAdbService : Service() {
         private const val REMOTE_PORT = 8888
     }
 }
-

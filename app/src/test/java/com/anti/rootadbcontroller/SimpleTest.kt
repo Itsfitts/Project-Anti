@@ -1,7 +1,7 @@
 package com.anti.rootadbcontroller
 
-import org.junit.Test
 import org.junit.Assert.assertEquals
+import org.junit.Test
 
 /**
  * Example simple unit test.
@@ -20,4 +20,3 @@ class SimpleTest {
         assertEquals("String concatenation should work correctly", "Hello World", result)
     }
 }
-

@@ -55,4 +55,3 @@ class AdbUtilsTest {
         println("[DEBUG_LOG] Device IP Address (WiFi): $result")
     }
 }
-

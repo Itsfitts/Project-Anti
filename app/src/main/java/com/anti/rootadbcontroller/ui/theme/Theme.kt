@@ -21,7 +21,7 @@ private val DarkColorPalette = darkColors(
 @Composable
 fun RootADBControllerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) {
         DarkColorPalette
@@ -35,7 +35,6 @@ fun RootADBControllerTheme(
         colors = colors,
         typography = Typography,
         shapes = Shapes,
-        content = content
+        content = content,
     )
 }
-

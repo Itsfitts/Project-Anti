@@ -9,8 +9,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.spy
+import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -55,7 +55,6 @@ class AntiDetectionUtilsTest {
         checkBuildMethod.isAccessible = true
         `when`(checkBuildMethod.invoke(antiDetectionUtilsSpy)).thenReturn(true)
 
-
         // Act
         val result = antiDetectionUtilsSpy.isEmulator(mockContext)
 
@@ -83,4 +82,3 @@ class AntiDetectionUtilsTest {
         println("[DEBUG_LOG] isEmulator with emulator files: $result")
     }
 }
-

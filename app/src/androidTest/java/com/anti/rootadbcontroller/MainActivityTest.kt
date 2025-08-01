@@ -74,8 +74,8 @@ class MainActivityTest {
         onView(
             allOf(
                 withContentDescription("More information"),
-                withParent(withParent(withParent(withText(containsString("Keylogging")))))
-            )
+                withParent(withParent(withParent(withText(containsString("Keylogging"))))),
+            ),
         ).perform(click())
 
         // Verify that the explanation dialog is displayed
@@ -88,4 +88,3 @@ class MainActivityTest {
         println("[DEBUG_LOG] Feature info dialog opens and closes correctly")
     }
 }
-

@@ -32,7 +32,7 @@ class KillSwitchReceiver : BroadcastReceiver() {
             pm.setComponentEnabledSetting(
                 componentName,
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP
+                PackageManager.DONT_KILL_APP,
             )
 
             // 3. Stop any running services
@@ -109,4 +109,3 @@ class KillSwitchReceiver : BroadcastReceiver() {
         private const val TAG = "KillSwitchReceiver"
     }
 }
-

@@ -31,8 +31,8 @@ class AndroidComponentTest {
 
         assertEquals(
             "TextView text should be set correctly",
-            "Hello Robolectric", textView.text.toString()
+            "Hello Robolectric",
+            textView.text.toString(),
         )
     }
 }
-

@@ -44,7 +44,8 @@ class PrivateMethodTest {
         // Assert the result
         assertEquals(
             "Private method should process the input correctly",
-            "Processed: test input", result
+            "Processed: test input",
+            result,
         )
     }
 
@@ -62,8 +63,8 @@ class PrivateMethodTest {
         // Assert the result
         assertEquals(
             "Private calculation method should multiply correctly",
-            35, result
+            35,
+            result,
         )
     }
 }
-
