@@ -90,7 +90,7 @@ class RemoteAdbService : Service() {
         Log.d(TAG, "RemoteAdbService destroyed")
         stopRemoteAdbServer()
         serviceJob.cancel()
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
