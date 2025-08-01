@@ -2,51 +2,68 @@ name: Android CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dorg.gradle.parallel=true
+  GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v3
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Run lint check
-        run: ./gradlew lint
+        run: ./gradlew lintDebug --stacktrace
 
       - name: Run unit tests with coverage
-        run: ./gradlew jacocoTestReport
+        run: ./gradlew testDebugUnitTest jacocoTestReport --stacktrace
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ github.run_id }}
           path: |
             app/build/reports/tests/
-            app/build/reports/lint-results.html
-            app/build/reports/lint-results.xml
+            app/build/reports/lint-results*.html
+            app/build/reports/lint-results*.xml
             app/build/reports/jacoco/jacocoTestReport/
+          retention-days: 30
 
       - name: Generate test summary
         if: always()
@@ -60,26 +77,35 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: test-summary.md
+          header: test-summary
 
-      - name: Upload APK
+      - name: Upload debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: app-debug-${{ github.run_id }}
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
 
-      - name: Upload all build outputs
+      - name: Upload build outputs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-build
+          name: build-outputs-${{ github.run_id }}
           path: app/build/outputs/
+          retention-days: 7
 
   instrumented-tests:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 45
     strategy:
+      fail-fast: false
       matrix:
-        api-level: [21, 24, 29, 33]
+        api-level: [24, 29, 33, 34]
         target: [default]
+        arch: [x86_64]
+        
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -89,33 +115,66 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: wrapper
+          cache-read-only: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Run instrumented tests with coverage
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}-${{ matrix.arch }}-${{ matrix.target }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}
-          arch: x86_64
+          arch: ${{ matrix.arch }}
           profile: Nexus 6
-          script: ./gradlew jacocoAndroidTestReport
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          profile: Nexus 6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: ./gradlew connectedDebugAndroidTest jacocoAndroidTestReport --stacktrace
 
       - name: Upload instrumented test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: instrumented-test-results-api-${{ matrix.api-level }}
+          name: instrumented-test-results-api-${{ matrix.api-level }}-${{ github.run_id }}
           path: |
             app/build/reports/androidTests/
             app/build/reports/jacoco/jacocoAndroidTestReport/
+            app/build/outputs/androidTest-results/
+          retention-days: 30
 
       - name: Generate instrumented test summary
         if: always()
@@ -129,12 +188,14 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: instrumented-test-summary-api-${{ matrix.api-level }}.md
+          header: instrumented-test-summary-api-${{ matrix.api-level }}
 
-  # Combined coverage report job
   coverage-report:
     runs-on: ubuntu-latest
     needs: [build, instrumented-tests]
-    if: always()
+    if: always() && needs.build.result == 'success'
+    timeout-minutes: 15
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -144,12 +205,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: wrapper
+          cache-read-only: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
@@ -158,6 +219,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: "*test-results*"
 
       - name: Generate combined coverage report
         run: |
@@ -165,30 +227,55 @@ jobs:
           mkdir -p app/build/outputs/code_coverage/debugAndroidTest/connected/
 
           # Copy unit test coverage data
-          cp -r artifacts/test-results/app/build/jacoco/testDebugUnitTest.exec app/build/jacoco/ || true
+          find artifacts -name "testDebugUnitTest.exec" -exec cp {} app/build/jacoco/ \; || true
 
           # Copy instrumented test coverage data from all API levels
-          for api_level_dir in artifacts/instrumented-test-results-api-*; do
-            if [ -d "$api_level_dir" ]; then
-              mkdir -p app/build/outputs/code_coverage/debugAndroidTest/connected/api-$(basename "$api_level_dir" | cut -d'-' -f5)
-              find "$api_level_dir" -name "*.ec" -exec cp {} app/build/outputs/code_coverage/debugAndroidTest/connected/api-$(basename "$api_level_dir" | cut -d'-' -f5)/coverage.ec \; || true
-            fi
-          done
+          find artifacts -name "*.ec" -exec cp {} app/build/outputs/code_coverage/debugAndroidTest/connected/ \; || true
 
           # Generate combined report
-          ./gradlew jacocoCombinedReport || true
+          ./gradlew jacocoCombinedReport --stacktrace || true
 
       - name: Upload combined coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: combined-coverage-report
+          name: combined-coverage-report-${{ github.run_id }}
           path: app/build/reports/jacoco/jacocoCombinedReport/
+          retention-days: 30
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: app/build/reports/jacoco/jacocoCombinedReport/xml/index.xml
+          files: app/build/reports/jacoco/jacocoCombinedReport/xml/index.xml
           flags: unittests,instrumentedtests
           name: codecov-umbrella
           fail_ci_if_error: false
+          verbose: true
+
+      - name: Add coverage comment to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'app/build/reports/jacoco/jacocoCombinedReport/html/index.html';
+            
+            if (fs.existsSync(path)) {
+              const coverage = fs.readFileSync(path, 'utf8');
+              const match = coverage.match(/Total.*?(\d+)%/);
+              const percentage = match ? match[1] : 'Unknown';
+              
+              const comment = `## 📊 Code Coverage Report
+              
+              **Total Coverage: ${percentage}%**
+              
+              📋 [View detailed coverage report in artifacts](${context.payload.pull_request.html_url}/checks)
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
