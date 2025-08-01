@@ -1,8 +1,15 @@
 name: Auto-assign and Fix PR Issues
 on:
   pull_request:
+  pull_request:
     types: [opened, synchronize]
 
+permissions:
+  issues: write
+  pull-requests: write
+    types: [opened, synchronize]
+
+jobs:
 jobs:
   auto-assign:
     runs-on: ubuntu-latest
