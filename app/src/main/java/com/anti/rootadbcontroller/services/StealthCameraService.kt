@@ -27,9 +27,9 @@ class StealthCameraService : Service() {
 
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
-    private lateinit var imageReader: ImageReader
-    private lateinit var backgroundThread: HandlerThread
-    private lateinit var backgroundHandler: Handler
+    private var imageReader: ImageReader? = null
+    private var backgroundThread: HandlerThread? = null
+    private var backgroundHandler: Handler? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
