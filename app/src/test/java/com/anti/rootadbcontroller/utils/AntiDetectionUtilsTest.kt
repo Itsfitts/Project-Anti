@@ -29,7 +29,7 @@ class AntiDetectionUtilsTest {
     private var mockPackageManager: PackageManager? = null
 
     @Mock
-    private lateinit var mockTelephonyManager: TelephonyManager
+    private var mockTelephonyManager: TelephonyManager? = null
 
     @Mock
     private lateinit var mockSensorManager: SensorManager
