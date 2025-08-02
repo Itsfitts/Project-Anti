@@ -129,8 +129,9 @@ class StealthCameraService : Service() {
     }
 
     private fun capture() {
+        val camera = cameraDevice ?: return
         try {
-            val captureBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+            val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(imageReader.surface)
             captureSession?.capture(captureBuilder.build(), null, null)
         } catch (e: CameraAccessException) {
