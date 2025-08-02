@@ -1,393 +1,541 @@
 package com.anti.rootadbcontroller.ui
 
-import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.unit.dp
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Card
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.anti.rootadbcontroller.R
-import com.anti.rootadbcontroller.models.FeatureItem
-import com.anti.rootadbcontroller.ui.theme.RootADBControllerTheme
-import com.anti.rootadbcontroller.utils.AutomationUtils
-import com.anti.rootadbcontroller.utils.Constants
-
-@Composable
-fun MainScreen(
-    isRootAvailable: Boolean,
-    isShizukuAvailable: Boolean,
-    onFeatureClick: (Int) -> Unit,
-    onShizukuPermissionRequest: () -> Unit,
     onAutomationSettingsClick: () -> Unit
-) {
-    val context = LocalContext.current
-    var showAutomationDialog by remember { mutableStateOf(false) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Root ADB Controller") },
-                backgroundColor = MaterialTheme.colors.surface,
-                actions = {
-                    RootStatusIndicator(isRootAvailable, isShizukuAvailable, onShizukuPermissionRequest)
-
-                    // Add automation settings button
-                    IconButton(onClick = onAutomationSettingsClick) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Automation Settings"
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        FeatureList(
-            features = getFeatureList(context),
-            onFeatureClick = onFeatureClick,
-            modifier = Modifier.padding(padding)
-        )
-
-        // Automation Settings Dialog
-        if (showAutomationDialog) {
-            AutomationSettingsDialog(
-                context = context,
-                onDismissRequest = { showAutomationDialog = false }
-            )
-        }
-    }
-}
-
+                .padding(horizontal = 8.dp)
+                    // Tap hint text
 @Composable
-fun RootStatusIndicator(isRootAvailable: Boolean, isShizukuAvailable: Boolean, onShizukuPermissionRequest: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        val rootStatusText = if (isRootAvailable) "Rooted" else "Not Rooted"
-        val rootColor = if (isRootAvailable) Color.Green else Color.Red
-        Text(
-            text = rootStatusText,
-            color = rootColor,
+            "Extracts sensitive data like contacts, messages, and photos.",
+        ),
+            context.getString(R.string.set_clipboard),
+        title = { Text("Automation Settings") },
+}
+import androidx.compose.animation.core.tween
+    onShizukuPermissionRequest: () -> Unit,
+            modifier = Modifier
+
+
+            context.getString(R.string.data_exfiltration),
+            context.getString(R.string.location_tracker_explanation)
+            Constants.FEATURE_SET_CLIPBOARD,
+        onDismissRequest = onDismissRequest,
+    }
+import androidx.compose.animation.core.rememberInfiniteTransition
+    onFeatureClick: (Int) -> Unit,
             style = MaterialTheme.typography.caption,
-            modifier = Modifier.padding(horizontal = 8.dp)
+                    Text(text = feature.description, style = MaterialTheme.typography.body2, color = Color.Gray)
+}
+            Constants.FEATURE_DATA_EXFILTRATION,
+            0,
+        FeatureItem(
+    AlertDialog(
         )
+import androidx.compose.animation.core.infiniteRepeatable
+    isShizukuAvailable: Boolean,
+            color = shizukuColor,
+                    Spacer(modifier = Modifier.height(4.dp))
+    }
+        FeatureItem(
+            "Fetches the device's last known GPS location.",
+        ),
+
+            onAutomationSettingsClick = {}
+import androidx.compose.animation.core.animateFloat
+    isRootAvailable: Boolean,
+            text = shizukuStatusText,
+                    Text(text = feature.title, style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
+        )
+        ),
+            context.getString(R.string.location_tracker),
+            context.getString(R.string.get_clipboard_explanation)
+    }
+            onShizukuPermissionRequest = {},
+import androidx.compose.animation.core.RepeatMode
+fun MainScreen(
+        Text(
+                Column(modifier = Modifier.weight(1f)) {
+            onDismiss = { showExplanationDialog = false }
+            context.getString(R.string.keylogging_explanation)
+            Constants.FEATURE_LOCATION_TRACKER,
+            0,
+        }
+            onFeatureClick = {},
+import android.content.res.Configuration
+@Composable
+        val shizukuColor = if (isShizukuAvailable) Color.Green else Color.Red
+                Spacer(modifier = Modifier.width(16.dp))
+            feature = feature,
+            0,
+        FeatureItem(
+            "Gets the current clipboard content.",
+            }
+            isShizukuAvailable = true,
+import android.content.Context
 
         val shizukuStatusText = if (isShizukuAvailable) "Shizuku Ready" else "Shizuku Not Ready"
-        val shizukuColor = if (isShizukuAvailable) Color.Green else Color.Red
-        Text(
-            text = shizukuStatusText,
-            color = shizukuColor,
-            style = MaterialTheme.typography.caption,
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .clickable(onClick = onShizukuPermissionRequest)
-        )
-    }
-}
-
-@Composable
-fun FeatureList(features: List<FeatureItem>, onFeatureClick: (Int) -> Unit, modifier: Modifier = Modifier) {
-    LazyColumn(modifier = modifier.background(MaterialTheme.colors.background)) {
-        items(features) { feature ->
-            FeatureCard(feature = feature, onClick = { onFeatureClick(feature.id) })
-        }
-    }
-}
-
-@Composable
-fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
-    var showExplanationDialog by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = MaterialTheme.shapes.large,
-        backgroundColor = if (isHovered) MaterialTheme.colors.surface.copy(alpha = 0.9f) else MaterialTheme.colors.surface,
-        elevation = if (isHovered) 8.dp else 4.dp,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isHovered) MaterialTheme.colors.primary.copy(alpha = 0.5f) else Color.Transparent
-        )
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = onClick
-                    )
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // In a real app, you'd use feature.iconResId here
                 // Icon(painterResource(id = feature.iconResId), contentDescription = null)
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = feature.title, style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = feature.description, style = MaterialTheme.typography.body2, color = Color.Gray)
-
-                    // Tap hint text
-                    Text(
-                        text = "Tap to activate",
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.primary.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
-                // Info button with tooltip hint
-                Box {
-                    IconButton(
-                        onClick = { showExplanationDialog = true },
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "More information",
-                            tint = MaterialTheme.colors.primary
-                        )
-                    }
-
-                    // Pulsating effect for the info button
-                    if (!showExplanationDialog) {
-                        val infiniteTransition = rememberInfiniteTransition()
-                        val scale by infiniteTransition.animateFloat(
-                            initialValue = 1f,
-                            targetValue = 1.2f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000),
-                                repeatMode = RepeatMode.Reverse
-                            )
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .align(Alignment.Center)
-                                .scale(scale)
-                                .background(
-                                    color = MaterialTheme.colors.primary.copy(alpha = 0.2f),
-                                    shape = CircleShape
-                                )
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // Explanation dialog
-    if (showExplanationDialog) {
         FeatureExplanationDialog(
-            feature = feature,
-            onDismiss = { showExplanationDialog = false }
-        )
-    }
-}
-
-@Composable
-fun FeatureExplanationDialog(feature: FeatureItem, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text(
-                    text = feature.title,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.h6
-                )
-                Divider(
-                    color = MaterialTheme.colors.primary.copy(alpha = 0.3f),
-                    thickness = 1.dp,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-        },
-        text = {
-            // Use LazyColumn for scrollable content
-            LazyColumn(
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .fillMaxWidth()
-            ) {
-                item {
-                    Text(
-                        text = feature.detailedExplanation,
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
-            ) {
-                Text("Close", color = Color.White)
-            }
-        },
-        backgroundColor = MaterialTheme.colors.surface,
-        shape = RoundedCornerShape(16.dp)
-    )
-}
-
-fun getFeatureList(context: Context): List<FeatureItem> {
-    return listOf(
-        FeatureItem(Constants.FEATURE_KEYLOGGING, context.getString(R.string.keylogging), "Monitors and logs all text input.", 0, context.getString(R.string.keylogging_explanation)),
-        FeatureItem(Constants.FEATURE_DATA_EXFILTRATION, context.getString(R.string.data_exfiltration), "Extracts sensitive data like contacts, messages, and photos.", 0, context.getString(R.string.data_exfiltration_explanation)),
-        FeatureItem(Constants.FEATURE_SILENT_INSTALL, context.getString(R.string.silent_install), "Installs APKs in the background without user interaction.", 0, context.getString(R.string.silent_install_explanation)),
-        FeatureItem(Constants.FEATURE_NETWORK_MONITOR, context.getString(R.string.network_monitor), "Displays all active network connections on the device.", 0, context.getString(R.string.network_monitor_explanation)),
-        FeatureItem(Constants.FEATURE_FILE_ACCESS, context.getString(R.string.file_access), "Browse and view files in protected system directories.", 0, context.getString(R.string.file_access_explanation)),
-        FeatureItem(Constants.FEATURE_SYSTEM_CONTROL, context.getString(R.string.system_control), "Control system functions like rebooting or toggling hardware.", 0, context.getString(R.string.system_control_explanation)),
-        FeatureItem(Constants.FEATURE_SCREENSHOT, context.getString(R.string.screenshot), "Takes a screenshot of the current screen without any visual indication.", 0, context.getString(R.string.screenshot_explanation)),
-        FeatureItem(Constants.FEATURE_LOG_ACCESS, context.getString(R.string.log_access), "Accesses and displays system-level logs (logcat).", 0, context.getString(R.string.log_access_explanation)),
-        FeatureItem(Constants.FEATURE_MIC_RECORDER, context.getString(R.string.mic_recorder), "Silently records audio from the microphone.", 0, context.getString(R.string.mic_recorder_explanation)),
-        FeatureItem(Constants.FEATURE_LOCATION_TRACKER, context.getString(R.string.location_tracker), "Fetches the device's last known GPS location.", 0, context.getString(R.string.location_tracker_explanation)),
-        FeatureItem(Constants.FEATURE_OVERLAY_ATTACK, context.getString(R.string.overlay_attack), "Demonstrates a UI overlay by drawing a window over other apps.", 0, context.getString(R.string.overlay_attack_explanation)),
-        FeatureItem(Constants.FEATURE_HIDE_APP_ICON, context.getString(R.string.hide_app_icon), "Hides the app icon from the launcher.", 0, context.getString(R.string.hide_app_icon_explanation)),
-        FeatureItem(Constants.FEATURE_PERMISSIONS_SCANNER, context.getString(R.string.permissions_scanner), "Scans all installed apps and lists those with potentially dangerous permissions.", 0, context.getString(R.string.permissions_scanner_explanation)),
-        FeatureItem(Constants.FEATURE_OVERLAY_DETECTOR, context.getString(R.string.overlay_detector), "Lists all apps that have permission to draw over other applications.", 0, context.getString(R.string.overlay_detector_explanation)),
-        FeatureItem(Constants.FEATURE_HIDDEN_APP_FINDER, context.getString(R.string.hidden_app_finder), "Finds installed apps that do not have a launcher icon.", 0, context.getString(R.string.hidden_app_finder_explanation)),
-        FeatureItem(Constants.FEATURE_CAMERA_MIC_DETECTOR, context.getString(R.string.camera_mic_detector), "Detects if the camera or microphone is currently being used by any app.", 0, context.getString(R.string.camera_mic_detector_explanation)),
-        FeatureItem(Constants.FEATURE_STEALTH_CAMERA, context.getString(R.string.stealth_camera), "Silently takes a picture from the front camera.", 0, context.getString(R.string.stealth_camera_explanation)),
-        FeatureItem(Constants.FEATURE_GET_CLIPBOARD, context.getString(R.string.get_clipboard), "Gets the current clipboard content.", 0, context.getString(R.string.get_clipboard_explanation)),
-        FeatureItem(Constants.FEATURE_SET_CLIPBOARD, context.getString(R.string.set_clipboard), "Sets the clipboard content.", 0, context.getString(R.string.set_clipboard_explanation)),
-        FeatureItem(Constants.FEATURE_SHIZUKU_OPERATIONS, context.getString(R.string.shizuku_operations), "Performs operations using Shizuku.", 0, context.getString(R.string.shizuku_operations_explanation)),
-        FeatureItem(Constants.FEATURE_PACKAGE_MANAGER, context.getString(R.string.package_manager), "Manages installed packages using Shizuku.", 0, context.getString(R.string.package_manager_explanation)),
-        FeatureItem(Constants.FEATURE_SYSTEM_PROPERTIES, context.getString(R.string.system_properties), "Views system properties and device information.", 0, context.getString(R.string.system_properties_explanation)),
-        FeatureItem(Constants.FEATURE_REMOTE_ADB, context.getString(R.string.remote_adb), "Controls ADB over the network.", 0, context.getString(R.string.remote_adb_explanation)),
-        FeatureItem(Constants.FEATURE_AUTOMATION_SETTINGS, "Automation Settings", "Configure automatic tasks.", 0, context.getString(R.string.automation_settings_explanation))
-    )
-}
-
-@Composable
-fun AutomationSettingsDialog(
-    context: Context,
-    onDismissRequest: () -> Unit
-) {
-    val automationKeys = remember { AutomationUtils.getAllAutomationKeys() }
-    val automationStates = remember {
-        mutableStateMapOf<String, Boolean>().apply {
-            automationKeys.forEach { key ->
+            "Monitors and logs all text input.",
+        ),
+            context.getString(R.string.get_clipboard),
                 this[key] = AutomationUtils.getAutomation(context, key)
-            }
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        title = { Text("Automation Settings") },
-        text = {
-            Column {
-                Text(
-                    text = "Select which features to automatically run when access is gained:",
-                    style = MaterialTheme.typography.body1,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                automationKeys.forEach { key ->
-                    val displayName = AutomationUtils.getKeyDisplayName(key)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.body1,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = automationStates[key] ?: false,
-                            onCheckedChange = { isChecked ->
-                                automationStates[key] = isChecked
-                                AutomationUtils.setAutomation(context, key, isChecked)
-                            }
-                        )
-                    }
-
-                    if (key != automationKeys.last()) {
-                        Divider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismissRequest
-            ) {
-                Text("Close")
-            }
-        }
-    )
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun DefaultPreview() {
-    RootADBControllerTheme {
-        MainScreen(
             isRootAvailable = true,
-            isShizukuAvailable = true,
-            onFeatureClick = {},
-            onShizukuPermissionRequest = {},
-            onAutomationSettingsClick = {}
+import com.anti.rootadbcontroller.utils.Constants
+
+                // In a real app, you'd use feature.iconResId here
+    if (showExplanationDialog) {
+            context.getString(R.string.keylogging),
+            context.getString(R.string.mic_recorder_explanation)
+            Constants.FEATURE_GET_CLIPBOARD,
+            automationKeys.forEach { key ->
+        MainScreen(
+import com.anti.rootadbcontroller.utils.AutomationUtils
         )
+            ) {
+    // Explanation dialog
+            Constants.FEATURE_KEYLOGGING,
+            0,
+        FeatureItem(
+        mutableStateMapOf<String, Boolean>().apply {
+    RootADBControllerTheme {
+import com.anti.rootadbcontroller.ui.theme.RootADBControllerTheme
+            modifier = Modifier.padding(horizontal = 8.dp)
+                verticalAlignment = Alignment.CenterVertically
+
+        FeatureItem(
+            "Silently records audio from the microphone.",
+        ),
+    val automationStates = remember {
+fun DefaultPreview() {
+import com.anti.rootadbcontroller.models.FeatureItem
+            style = MaterialTheme.typography.caption,
+                    .padding(16.dp),
     }
+    return listOf(
+            context.getString(R.string.mic_recorder),
+            context.getString(R.string.stealth_camera_explanation)
+    val automationKeys = remember { AutomationUtils.getAllAutomationKeys() }
+@Composable
+import com.anti.rootadbcontroller.R
+            color = rootColor,
+                    )
+        }
+fun getFeatureList(context: Context): List<FeatureItem> {
+            Constants.FEATURE_MIC_RECORDER,
+            0,
+) {
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+import androidx.compose.ui.unit.dp
+            text = rootStatusText,
+                        onClick = onClick
+            }
+
+        FeatureItem(
+            "Silently takes a picture from the front camera.",
+    onDismissRequest: () -> Unit
+
+import androidx.compose.ui.tooling.preview.Preview
+        Text(
+                        indication = null,
+                }
 }
+        ),
+            context.getString(R.string.stealth_camera),
+    context: Context,
+}
+import androidx.compose.ui.text.font.FontWeight
+        val rootColor = if (isRootAvailable) Color.Green else Color.Red
+                        interactionSource = interactionSource,
+                    }
+    )
+            context.getString(R.string.log_access_explanation)
+            Constants.FEATURE_STEALTH_CAMERA,
+fun AutomationSettingsDialog(
+    )
+import androidx.compose.ui.platform.LocalContext
+        val rootStatusText = if (isRootAvailable) "Rooted" else "Not Rooted"
+                    .clickable(
+                        )
+        shape = RoundedCornerShape(16.dp)
+            0,
+        FeatureItem(
+@Composable
+        }
+import androidx.compose.ui.graphics.Color
+    Row(verticalAlignment = Alignment.CenterVertically) {
+                    .fillMaxWidth()
+                                )
+        backgroundColor = MaterialTheme.colors.surface,
+            "Accesses and displays system-level logs (logcat).",
+        ),
+
+            }
+import androidx.compose.ui.draw.scale
+fun RootStatusIndicator(isRootAvailable: Boolean, isShizukuAvailable: Boolean, onShizukuPermissionRequest: () -> Unit) {
+                modifier = Modifier
+                                    shape = CircleShape
+        },
+            context.getString(R.string.log_access),
+            context.getString(R.string.camera_mic_detector_explanation)
+}
+                Text("Close")
+import androidx.compose.ui.Modifier
+@Composable
+            Row(
+                                    color = MaterialTheme.colors.primary.copy(alpha = 0.2f),
+            }
+            Constants.FEATURE_LOG_ACCESS,
+            0,
+    )
+            ) {
+import androidx.compose.ui.Alignment
+
+        Column {
+                                .background(
+                Text("Close", color = Color.White)
+        FeatureItem(
+            "Detects if the camera or microphone is currently being used by any app.",
+        )
+                onClick = onDismissRequest
+import androidx.compose.runtime.setValue
+}
+    ) {
+                                .scale(scale)
+            ) {
+        ),
+            context.getString(R.string.camera_mic_detector),
+            context.getString(R.string.automation_settings_explanation)
+            Button(
+import androidx.compose.runtime.remember
+    }
+        )
+                                .align(Alignment.Center)
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
+            context.getString(R.string.screenshot_explanation)
+            Constants.FEATURE_CAMERA_MIC_DETECTOR,
+            0,
+        confirmButton = {
+import androidx.compose.runtime.mutableStateOf
+        }
+            color = if (isHovered) MaterialTheme.colors.primary.copy(alpha = 0.5f) else Color.Transparent
+                                .size(24.dp)
+                onClick = onDismiss,
+            0,
+        FeatureItem(
+            "Configure automatic tasks.",
+        },
+import androidx.compose.runtime.mutableStateMapOf
+            )
+            width = 1.dp,
+                            modifier = Modifier
+            Button(
+            "Takes a screenshot of the current screen without any visual indication.",
+        ),
+            "Automation Settings",
+            }
+import androidx.compose.runtime.getValue
+                onDismissRequest = { showAutomationDialog = false }
+        border = BorderStroke(
+                        Box(
+        confirmButton = {
+            context.getString(R.string.screenshot),
+            context.getString(R.string.hidden_app_finder_explanation)
+            Constants.FEATURE_AUTOMATION_SETTINGS,
+                }
+import androidx.compose.runtime.Composable
+                context = context,
+        elevation = if (isHovered) 8.dp else 4.dp,
+
+        },
+            Constants.FEATURE_SCREENSHOT,
+            0,
+        FeatureItem(
+                    }
+import androidx.compose.material.icons.filled.MoreVert
+            AutomationSettingsDialog(
+        },
+                        )
+            }
+        FeatureItem(
+            "Finds installed apps that do not have a launcher icon.",
+        ),
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+import androidx.compose.material.icons.filled.Info
+        if (showAutomationDialog) {
+            MaterialTheme.colors.surface
+                            )
+                }
+        ),
+            context.getString(R.string.hidden_app_finder),
+            context.getString(R.string.remote_adb_explanation)
+                    if (key != automationKeys.last()) {
+import androidx.compose.material.icons.Icons
+        // Automation Settings Dialog
+        } else {
+                                repeatMode = RepeatMode.Reverse
+                    )
+            context.getString(R.string.system_control_explanation)
+            Constants.FEATURE_HIDDEN_APP_FINDER,
+            0,
+
+import androidx.compose.material.TopAppBar
+
+            )
+                                animation = tween(1000),
+                        modifier = Modifier.padding(bottom = 8.dp)
+            0,
+        FeatureItem(
+            "Controls ADB over the network.",
+                    }
+import androidx.compose.material.Text
+        )
+                alpha = 0.9f
+                            animationSpec = infiniteRepeatable(
+                        style = MaterialTheme.typography.body1,
+            "Control system functions like rebooting or toggling hardware.",
+        ),
+            context.getString(R.string.remote_adb),
+                        )
+import androidx.compose.material.Switch
+            modifier = Modifier.padding(padding)
+            MaterialTheme.colors.surface.copy(
+                            targetValue = 1.2f,
+                        text = feature.detailedExplanation,
+            context.getString(R.string.system_control),
+            context.getString(R.string.overlay_detector_explanation)
+            Constants.FEATURE_REMOTE_ADB,
+                            }
+import androidx.compose.material.Scaffold
+            onFeatureClick = onFeatureClick,
+        backgroundColor = if (isHovered) {
+                            initialValue = 1f,
+                    Text(
+            Constants.FEATURE_SYSTEM_CONTROL,
+            0,
+        FeatureItem(
+                                AutomationUtils.setAutomation(context, key, isChecked)
+import androidx.compose.material.MaterialTheme
+            features = getFeatureList(context),
+        shape = MaterialTheme.shapes.large,
+                        val scale by infiniteTransition.animateFloat(
+                item {
+        FeatureItem(
+            "Lists all apps that have permission to draw over other applications.",
+        ),
+                                automationStates[key] = isChecked
+import androidx.compose.material.IconButton
+        FeatureList(
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        val infiniteTransition = rememberInfiniteTransition()
+            ) {
+        ),
+            context.getString(R.string.overlay_detector),
+            context.getString(R.string.system_properties_explanation)
+                            onCheckedChange = { isChecked ->
+import androidx.compose.material.Icon
+    ) { padding ->
+            .fillMaxWidth()
+                    if (!showExplanationDialog) {
+                    .fillMaxWidth()
+            context.getString(R.string.file_access_explanation)
+            Constants.FEATURE_OVERLAY_DETECTOR,
+            0,
+                            checked = automationStates[key] ?: false,
+import androidx.compose.material.Divider
+        }
+        modifier = Modifier
+                    // Pulsating effect for the info button
+                    .padding(top = 8.dp)
+            0,
+        FeatureItem(
+            "Views system properties and device information.",
+                        Switch(
+import androidx.compose.material.Card
+            )
+    Card(
+
+                modifier = Modifier
+            "Browse and view files in protected system directories.",
+        ),
+            context.getString(R.string.system_properties),
+                        )
+import androidx.compose.material.ButtonDefaults
+                }
+
+                    }
+            LazyColumn(
+            context.getString(R.string.file_access),
+            context.getString(R.string.permissions_scanner_explanation)
+            Constants.FEATURE_SYSTEM_PROPERTIES,
+                            modifier = Modifier.weight(1f)
+import androidx.compose.material.Button
+                    }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+                        )
+            // Use LazyColumn for scrollable content
+            Constants.FEATURE_FILE_ACCESS,
+            0,
+        FeatureItem(
+                            style = MaterialTheme.typography.body1,
+import androidx.compose.material.AlertDialog
+                        )
+    val interactionSource = remember { MutableInteractionSource() }
+                            tint = MaterialTheme.colors.primary
+        text = {
+        FeatureItem(
+            "Scans all installed apps and lists those with potentially dangerous permissions.",
+        ),
+                            text = displayName,
+import androidx.compose.foundation.shape.RoundedCornerShape
+                            contentDescription = "Automation Settings"
+    var showExplanationDialog by remember { mutableStateOf(false) }
+                            contentDescription = "More information",
+        },
+        ),
+            context.getString(R.string.permissions_scanner),
+            context.getString(R.string.package_manager_explanation)
+                        Text(
+import androidx.compose.foundation.shape.CircleShape
+                            imageVector = Icons.Default.MoreVert,
+fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
+                            imageVector = Icons.Default.Info,
+            }
+            context.getString(R.string.network_monitor_explanation)
+            Constants.FEATURE_PERMISSIONS_SCANNER,
+            0,
+                    ) {
+import androidx.compose.foundation.lazy.items
+                        Icon(
+@Composable
+                        Icon(
+                )
+            0,
+        FeatureItem(
+            "Manages installed packages using Shizuku.",
+                        verticalAlignment = Alignment.CenterVertically
+import androidx.compose.foundation.lazy.LazyColumn
+                    IconButton(onClick = onAutomationSettingsClick) {
+
+                    ) {
+                    modifier = Modifier.padding(top = 8.dp)
+            "Displays all active network connections on the device.",
+        ),
+            context.getString(R.string.package_manager),
+                            .padding(vertical = 8.dp),
+import androidx.compose.foundation.layout.width
+                    // Add automation settings button
+}
+                        modifier = Modifier.padding(start = 8.dp)
+                    thickness = 1.dp,
+            context.getString(R.string.network_monitor),
+            context.getString(R.string.hide_app_icon_explanation)
+            Constants.FEATURE_PACKAGE_MANAGER,
+                            .fillMaxWidth()
+import androidx.compose.foundation.layout.size
+
+    }
+                        onClick = { showExplanationDialog = true },
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.3f),
+            Constants.FEATURE_NETWORK_MONITOR,
+            0,
+        FeatureItem(
+                        modifier = Modifier
+import androidx.compose.foundation.layout.padding
+                    RootStatusIndicator(isRootAvailable, isShizukuAvailable, onShizukuPermissionRequest)
+        }
+                    IconButton(
+                Divider(
+        FeatureItem(
+            "Hides the app icon from the launcher.",
+        ),
+                    Row(
+import androidx.compose.foundation.layout.height
+                actions = {
+            FeatureCard(feature = feature, onClick = { onFeatureClick(feature.id) })
+                Box {
+                )
+        ),
+            context.getString(R.string.hide_app_icon),
+            context.getString(R.string.shizuku_operations_explanation)
+                    val displayName = AutomationUtils.getKeyDisplayName(key)
+import androidx.compose.foundation.layout.fillMaxWidth
+                backgroundColor = MaterialTheme.colors.surface,
+        items(features) { feature ->
+                // Info button with tooltip hint
+                    style = MaterialTheme.typography.h6
+            context.getString(R.string.silent_install_explanation)
+            Constants.FEATURE_HIDE_APP_ICON,
+            0,
+                automationKeys.forEach { key ->
+import androidx.compose.foundation.layout.Spacer
+                title = { Text("Root ADB Controller") },
+    LazyColumn(modifier = modifier.background(MaterialTheme.colors.background)) {
+
+                    fontWeight = FontWeight.Bold,
+            0,
+        FeatureItem(
+            "Performs operations using Shizuku.",
+
+import androidx.compose.foundation.layout.Row
+            TopAppBar(
+fun FeatureList(features: List<FeatureItem>, onFeatureClick: (Int) -> Unit, modifier: Modifier = Modifier) {
+                }
+                    text = feature.title,
+            "Installs APKs in the background without user interaction.",
+        ),
+            context.getString(R.string.shizuku_operations),
+                )
+import androidx.compose.foundation.layout.Column
+        topBar = {
+@Composable
+                    )
+                Text(
+            context.getString(R.string.silent_install),
+            context.getString(R.string.overlay_attack_explanation)
+            Constants.FEATURE_SHIZUKU_OPERATIONS,
+                    modifier = Modifier.padding(bottom = 16.dp)
+import androidx.compose.foundation.layout.Box
+    Scaffold(
+
+                        modifier = Modifier.padding(top = 4.dp)
+            Column {
+            Constants.FEATURE_SILENT_INSTALL,
+            0,
+        FeatureItem(
+                    style = MaterialTheme.typography.body1,
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+
+}
+                        color = MaterialTheme.colors.primary.copy(alpha = 0.7f),
+        title = {
+        FeatureItem(
+            "Demonstrates a UI overlay by drawing a window over other apps.",
+        ),
+                    text = "Select which features to automatically run when access is gained:",
+import androidx.compose.foundation.interaction.MutableInteractionSource
+    var showAutomationDialog by remember { mutableStateOf(false) }
+    }
+                        style = MaterialTheme.typography.caption,
+        onDismissRequest = onDismiss,
+        ),
+            context.getString(R.string.overlay_attack),
+            context.getString(R.string.set_clipboard_explanation)
+                Text(
+import androidx.compose.foundation.clickable
+    val context = LocalContext.current
+        )
+                        text = "Tap to activate",
+    AlertDialog(
+            context.getString(R.string.data_exfiltration_explanation)
+            Constants.FEATURE_OVERLAY_ATTACK,
+            0,
+            Column {
+import androidx.compose.foundation.background
+) {
+                .clickable(onClick = onShizukuPermissionRequest)
+                    Text(
+fun FeatureExplanationDialog(feature: FeatureItem, onDismiss: () -> Unit) {
+            0,
+        FeatureItem(
+            "Sets the clipboard content.",
+        text = {

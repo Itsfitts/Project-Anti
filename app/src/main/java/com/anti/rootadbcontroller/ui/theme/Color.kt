@@ -13,4 +13,3 @@ val DarkSurface = Color(0xFF242424)
 val DarkOnSurface = Color(0xFFE0E0E0)
 val PrimaryGreen = Color(0xFF00FF87)
 val AccentRed = Color(0xFFFF5252)
-

@@ -1,86 +1,84 @@
 package com.anti.rootadbcontroller.utils
 
-import android.content.Context
-import android.content.pm.PackageManager
-import android.hardware.SensorManager
-import android.telephony.TelephonyManager
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.spy
 import org.mockito.MockitoAnnotations
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-
-/**
- * Unit tests for [AntiDetectionUtils]
- */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
-class AntiDetectionUtilsTest {
-
     @Mock
-    private lateinit var mockContext: Context
-
-    @Mock
-    private lateinit var mockPackageManager: PackageManager
-
-    @Mock
-    private lateinit var mockTelephonyManager: TelephonyManager
-
-    @Mock
-    private lateinit var mockSensorManager: SensorManager
-
-    @Before
-    fun setUp() {
-        MockitoAnnotations.openMocks(this)
-
-        // Setup context mocks
         `when`(mockContext.packageManager).thenReturn(mockPackageManager)
-        `when`(mockContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(mockTelephonyManager)
-        `when`(mockContext.getSystemService(Context.SENSOR_SERVICE)).thenReturn(mockSensorManager)
-    }
-
-    @Test
-    fun `isEmulator with emulator build props returns true`() {
-        // Arrange
-        val antiDetectionUtilsSpy = spy(AntiDetectionUtils::class.java)
-
-        // Mock the private methods
-        `when`(antiDetectionUtilsSpy.isEmulator(mockContext)).thenCallRealMethod()
-        val checkBuildMethod = AntiDetectionUtils::class.java.getDeclaredMethod("checkBuild")
-        checkBuildMethod.isAccessible = true
         `when`(checkBuildMethod.invoke(antiDetectionUtilsSpy)).thenReturn(true)
 
+}
+import org.mockito.Mockito.`when`
 
-        // Act
-        val result = antiDetectionUtilsSpy.isEmulator(mockContext)
-
-        // Assert
-        assertTrue("Should return true when build properties indicate an emulator", result)
-        println("[DEBUG_LOG] isEmulator with emulator build props: $result")
+        // Setup context mocks
+        checkBuildMethod.isAccessible = true
+        val antiDetectionUtilsSpy = spy(AntiDetectionUtils::class.java)
     }
+import org.mockito.Mockito.spy
+    private lateinit var mockContext: Context
+
+        val checkBuildMethod = AntiDetectionUtils::class.java.getDeclaredMethod("checkBuild")
+        // Arrange
+        println("[DEBUG_LOG] isEmulator with emulator files: $result")
+import org.mockito.Mock
+    @Mock
+        MockitoAnnotations.openMocks(this)
+        `when`(antiDetectionUtilsSpy.isEmulator(mockContext)).thenCallRealMethod()
+    fun `isEmulator with emulator files returns true`() {
+        assertTrue("Should return true when emulator files are present", result)
+import org.junit.runner.RunWith
+
+    fun setUp() {
+        // Mock the private methods
+    @Test
+        // Assert
+import org.junit.Test
+class AntiDetectionUtilsTest {
+    @Before
+
+
+
+import org.junit.Before
+@Config(sdk = [28])
+
+        val antiDetectionUtilsSpy = spy(AntiDetectionUtils::class.java)
+    }
+        val result = antiDetectionUtilsSpy.isEmulator(mockContext)
+import org.junit.Assert.assertTrue
+@RunWith(RobolectricTestRunner::class)
+    private lateinit var mockSensorManager: SensorManager
+        // Arrange
+        println("[DEBUG_LOG] isEmulator with emulator build props: $result")
+        // Act
+import android.telephony.TelephonyManager
+ */
+    @Mock
+    fun `isEmulator with emulator build props returns true`() {
+        assertTrue("Should return true when build properties indicate an emulator", result)
+
+import android.hardware.SensorManager
+ * Unit tests for [AntiDetectionUtils]
 
     @Test
-    fun `isEmulator with emulator files returns true`() {
-        // Arrange
-        val antiDetectionUtilsSpy = spy(AntiDetectionUtils::class.java)
+        // Assert
+        `when`(checkFilesMethod.invoke(antiDetectionUtilsSpy)).thenReturn(true)
+import android.content.pm.PackageManager
+/**
+    private lateinit var mockTelephonyManager: TelephonyManager
+
+
+        checkFilesMethod.isAccessible = true
+import android.content.Context
+
+    @Mock
+    }
+        val result = antiDetectionUtilsSpy.isEmulator(mockContext)
+        val checkFilesMethod = AntiDetectionUtils::class.java.getDeclaredMethod("checkFiles")
+import org.robolectric.annotation.Config
+
+        `when`(mockContext.getSystemService(Context.SENSOR_SERVICE)).thenReturn(mockSensorManager)
+        // Act
+        `when`(antiDetectionUtilsSpy.isEmulator(mockContext)).thenCallRealMethod()
+import org.robolectric.RobolectricTestRunner
+    private lateinit var mockPackageManager: PackageManager
+        `when`(mockContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(mockTelephonyManager)
 
         // Mock the private methods
-        `when`(antiDetectionUtilsSpy.isEmulator(mockContext)).thenCallRealMethod()
-        val checkFilesMethod = AntiDetectionUtils::class.java.getDeclaredMethod("checkFiles")
-        checkFilesMethod.isAccessible = true
-        `when`(checkFilesMethod.invoke(antiDetectionUtilsSpy)).thenReturn(true)
-
-        // Act
-        val result = antiDetectionUtilsSpy.isEmulator(mockContext)
-
-        // Assert
-        assertTrue("Should return true when emulator files are present", result)
-        println("[DEBUG_LOG] isEmulator with emulator files: $result")
-    }
-}
-
