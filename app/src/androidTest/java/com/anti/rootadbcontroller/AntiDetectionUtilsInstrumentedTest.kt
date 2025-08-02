@@ -15,7 +15,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AntiDetectionUtilsInstrumentedTest {
 
-    private lateinit var context: android.content.Context
+    private var context: android.content.Context? = null
 
     @Before
     fun setUp() {
