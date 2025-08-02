@@ -232,9 +232,9 @@ class ShizukuManagerService : Service() {
             var data: String
             when (operation.lowercase()) {
                 "netstat" -> {
-                    val result = shizukuUtils.executeShellCommandWithResult("netstat -tuln")
-                    success = result.isSuccess
-                    data = if (success) result.output else "Failed to get network connections"
+                    val result = shizukuUtils?.executeShellCommandWithResult("netstat -tuln")
+                    success = result?.isSuccess ?: false
+                    data = if (success) result?.output ?: "" else "Failed to get network connections"
                 }
                 "ifconfig" -> {
                     val result = shizukuUtils.executeShellCommandWithResult("ip addr")
