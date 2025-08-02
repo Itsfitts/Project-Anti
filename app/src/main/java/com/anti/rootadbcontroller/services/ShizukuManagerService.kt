@@ -122,7 +122,7 @@ class ShizukuManagerService : Service() {
      * Advanced system operations
      */
     fun performSystemOperation(operation: SystemOperation, callback: SystemOperationCallback?) {
-        executor.execute {
+        executor?.execute {
             var success = false
             var result = ""
 
