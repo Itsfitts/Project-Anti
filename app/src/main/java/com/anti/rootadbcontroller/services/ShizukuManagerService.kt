@@ -196,7 +196,7 @@ class ShizukuManagerService : Service() {
      * List installed packages
      */
     fun listPackages(includeSystem: Boolean, callback: SystemOperationCallback?) {
-        executor.execute {
+        executor?.execute {
             val command = if (includeSystem) "pm list packages" else "pm list packages -3"
             val result = shizukuUtils.executeShellCommandWithResult(command)
             callback?.onSystemOperationResult(
