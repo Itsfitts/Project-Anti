@@ -32,7 +32,7 @@ class AntiDetectionUtilsTest {
     private lateinit var mockTelephonyManager: TelephonyManager
 
     @Mock
-    private var mockSensorManager: SensorManager? = null
+    private lateinit var mockSensorManager: SensorManager
 
     @Before
     fun setUp() {
