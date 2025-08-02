@@ -55,7 +55,7 @@ class StealthCameraService : Service() {
     }
 
     private fun stopBackgroundThread() {
-        backgroundThread.quitSafely()
+        backgroundThread?.quitSafely()
         try {
             backgroundThread.join()
         } catch (e: InterruptedException) {
