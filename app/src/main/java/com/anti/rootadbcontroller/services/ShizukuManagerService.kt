@@ -15,8 +15,8 @@ import java.util.concurrent.Executors
  */
 class ShizukuManagerService : Service() {
     private val binder = ShizukuManagerBinder()
-    private lateinit var shizukuUtils: ShizukuUtils
-    private lateinit var executor: ExecutorService
+    private var shizukuUtils: ShizukuUtils? = null
+    private var executor: ExecutorService? = null
 
     inner class ShizukuManagerBinder : Binder() {
         fun getService(): ShizukuManagerService = this@ShizukuManagerService
