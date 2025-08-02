@@ -48,7 +48,7 @@ class OverlayService : Service() {
         }
 
         overlayView?.let { view ->
-            windowManager.addView(view, params)
+            windowManager?.addView(view, params)
             
             val closeButton = view.findViewById<Button>(R.id.overlay_button)
             closeButton.setOnClickListener { stopSelf() }
