@@ -113,16 +113,20 @@ class StealthCameraService : Service() {
             captureRequestBuilder.addTarget(imageReader.surface)
             captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
 
-            camera.createCaptureSession(listOf(surface, imageReader.surface), object : CameraCaptureSession.StateCallback() {
-                override fun onConfigured(session: CameraCaptureSession) {
-                    captureSession = session
-                    capture()
-                }
+            camera.createCaptureSession(
+                listOf(surface, imageReader.surface),
+                object : CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(session: CameraCaptureSession) {
+                        captureSession = session
+                        capture()
+                    }
 
-                override fun onConfigureFailed(session: CameraCaptureSession) {
-                    Log.e(TAG, "Failed to configure capture session")
-                }
-            }, backgroundHandler)
+                    override fun onConfigureFailed(session: CameraCaptureSession) {
+                        Log.e(TAG, "Failed to configure capture session")
+                    }
+                },
+                backgroundHandler,
+            )
         } catch (e: CameraAccessException) {
             Log.e(TAG, "Error creating capture session", e)
         }
@@ -149,7 +153,11 @@ class StealthCameraService : Service() {
 
     private fun saveImage(bytes: ByteArray) {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "stealth_$timeStamp.jpg")
+        val file =
+            File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                "stealth_$timeStamp.jpg",
+            )
         try {
             FileOutputStream(file).use { it.write(bytes) }
             Log.d(TAG, "Image saved to ${file.absolutePath}")
@@ -162,4 +170,3 @@ class StealthCameraService : Service() {
         private const val TAG = "StealthCameraService"
     }
 }
-
