@@ -105,14 +105,15 @@ class StealthCameraService : Service() {
     }
 
     private fun createCaptureSession() {
+        val camera = cameraDevice ?: return
         try {
             val surfaceTexture = SurfaceTexture(10)
             val surface = Surface(surfaceTexture)
-            val captureRequestBuilder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+            val captureRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureRequestBuilder.addTarget(imageReader.surface)
             captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
 
-            cameraDevice?.createCaptureSession(listOf(surface, imageReader.surface), object : CameraCaptureSession.StateCallback() {
+            camera.createCaptureSession(listOf(surface, imageReader.surface), object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(session: CameraCaptureSession) {
                     captureSession = session
                     capture()
