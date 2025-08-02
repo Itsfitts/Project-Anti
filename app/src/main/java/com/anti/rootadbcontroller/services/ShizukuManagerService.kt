@@ -50,7 +50,7 @@ class ShizukuManagerService : Service() {
      * Request Shizuku permission
      */
     fun requestShizukuPermission() {
-        shizukuUtils.requestShizukuPermission()
+        shizukuUtils?.requestShizukuPermission()
     }
 
     /**
