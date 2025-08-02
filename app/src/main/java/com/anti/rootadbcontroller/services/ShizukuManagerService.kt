@@ -44,7 +44,7 @@ class ShizukuManagerService : Service() {
      * Check if Shizuku is available and ready
      */
     fun isShizukuReady(): Boolean =
-        shizukuUtils.isShizukuAvailable && shizukuUtils.hasShizukuPermission()
+        shizukuUtils?.isShizukuAvailable == true && shizukuUtils?.hasShizukuPermission() == true
 
     /**
      * Request Shizuku permission
