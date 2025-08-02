@@ -219,7 +219,7 @@ class ShizukuManagerService : Service() {
                 else -> "$operation $filePath"
             }
             val result = shizukuUtils?.executeShellCommandWithResult(command)
-            callback?.onFileOperationResult(result.isSuccess, filePath, operation)
+            callback?.onFileOperationResult(result?.isSuccess ?: false, filePath, operation)
         }
     }
 
