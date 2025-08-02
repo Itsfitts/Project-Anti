@@ -163,7 +163,8 @@ class ShizukuManagerService : Service() {
                     result = if (success) cmdResult.output else "Failed to get property"
                 }
                 SystemOperation.Type.CUSTOM_COMMAND -> {
-                    val cmdResult = shizukuUtils.executeShellCommandWithResult(operation.customCommand!!)
+                    val customCommand = operation.customCommand ?: return@execute
+                    val cmdResult = shizukuUtils.executeShellCommandWithResult(customCommand)
                     success = cmdResult.isSuccess
                     result = if (success) cmdResult.output else "Command execution failed"
                 }
