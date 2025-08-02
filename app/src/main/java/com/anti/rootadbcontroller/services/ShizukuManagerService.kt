@@ -237,9 +237,9 @@ class ShizukuManagerService : Service() {
                     data = if (success) result?.output ?: "" else "Failed to get network connections"
                 }
                 "ifconfig" -> {
-                    val result = shizukuUtils.executeShellCommandWithResult("ip addr")
-                    success = result.isSuccess
-                    data = if (success) result.output else "Failed to get network interfaces"
+                    val result = shizukuUtils?.executeShellCommandWithResult("ip addr")
+                    success = result?.isSuccess ?: false
+                    data = if (success) result?.output ?: "" else "Failed to get network interfaces"
                 }
                 "ping" -> {
                     val result = shizukuUtils.executeShellCommandWithResult("ping -c 4 8.8.8.8")
