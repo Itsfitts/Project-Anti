@@ -40,7 +40,7 @@ class AntiDetectionUtilsInstrumentedTest {
     @Test
     fun testIsDeveloperModeEnabled() {
         // Check if developer mode is enabled
-        val result = AntiDetectionUtils.isDeveloperModeEnabled(context)
+        val result = context?.let { AntiDetectionUtils.isDeveloperModeEnabled(it) } ?: false
 
         // Log the result for debugging
         println("[DEBUG_LOG] isDeveloperModeEnabled result: $result")
