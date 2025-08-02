@@ -141,8 +141,8 @@ class ShizukuManagerService : Service() {
                     result = if (success) "App data cleared" else "Failed to clear app data"
                 }
                 SystemOperation.Type.FORCE_STOP_APP -> {
-                    val cmdResult = shizukuUtils.executeShellCommandWithResult("am force-stop ${operation.packageName}")
-                    success = cmdResult.isSuccess
+                    val cmdResult = shizukuUtils?.executeShellCommandWithResult("am force-stop ${operation.packageName}")
+                    success = cmdResult?.isSuccess ?: false
                     result = if (success) "App force stopped" else "Failed to force stop app"
                 }
                 SystemOperation.Type.GET_APP_INFO -> {
