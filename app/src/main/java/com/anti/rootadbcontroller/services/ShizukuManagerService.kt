@@ -184,9 +184,9 @@ class ShizukuManagerService : Service() {
             if (result?.isSuccess == true) {
                 info.append("Device Model: ").append(result.output?.trim()).append("\n")
             }
-            result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.sdk")
-            if (result.isSuccess) {
-                info.append("SDK Level: ").append(result.output.trim()).append("\n")
+            result = shizukuUtils?.executeShellCommandWithResult("getprop ro.build.version.sdk")
+            if (result?.isSuccess == true) {
+                info.append("SDK Level: ").append(result.output?.trim()).append("\n")
             }
             callback?.onSystemOperationResult(true, "GET_SYSTEM_INFO", info.toString())
         }
