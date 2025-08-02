@@ -51,7 +51,7 @@ class StealthCameraService : Service() {
 
     private fun startBackgroundThread() {
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
-        backgroundHandler = Handler(backgroundThread.looper)
+        backgroundHandler = backgroundThread?.looper?.let { Handler(it) }
     }
 
     private fun stopBackgroundThread() {
