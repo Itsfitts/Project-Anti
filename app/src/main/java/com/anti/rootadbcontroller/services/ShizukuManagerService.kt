@@ -97,8 +97,8 @@ class ShizukuManagerService : Service() {
      * Revoke permission from package
      */
     fun revokePermissionAsync(packageName: String, permission: String, callback: PermissionCallback?) {
-        executor.execute {
-            val success = shizukuUtils.revokePermission(packageName, permission)
+        executor?.execute {
+            val success = shizukuUtils?.revokePermission(packageName, permission) ?: false
             callback?.onPermissionResult(success, packageName, permission, false)
         }
     }
