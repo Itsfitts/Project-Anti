@@ -174,7 +174,7 @@ class ShizukuManagerService : Service() {
      * Get system information
      */
     fun getSystemInfo(callback: SystemOperationCallback?) {
-        executor.execute {
+        executor?.execute {
             val info = StringBuilder()
             var result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.release")
             if (result.isSuccess) {
