@@ -23,10 +23,10 @@ import org.robolectric.annotation.Config
 class AntiDetectionUtilsTest {
 
     @Mock
-    private var mockContext: Context? = null
+    private lateinit var mockContext: Context
 
     @Mock
-    private var mockPackageManager: PackageManager? = null
+    private lateinit var mockPackageManager: PackageManager
 
     @Mock
     private var mockTelephonyManager: TelephonyManager? = null
