@@ -180,9 +180,9 @@ class ShizukuManagerService : Service() {
             if (result?.isSuccess == true) {
                 info.append("Android Version: ").append(result.output?.trim()).append("\n")
             }
-            result = shizukuUtils.executeShellCommandWithResult("getprop ro.product.model")
-            if (result.isSuccess) {
-                info.append("Device Model: ").append(result.output.trim()).append("\n")
+            result = shizukuUtils?.executeShellCommandWithResult("getprop ro.product.model")
+            if (result?.isSuccess == true) {
+                info.append("Device Model: ").append(result.output?.trim()).append("\n")
             }
             result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.sdk")
             if (result.isSuccess) {
