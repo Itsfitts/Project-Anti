@@ -146,9 +146,9 @@ class ShizukuManagerService : Service() {
                     result = if (success) "App force stopped" else "Failed to force stop app"
                 }
                 SystemOperation.Type.GET_APP_INFO -> {
-                    val cmdResult = shizukuUtils.executeShellCommandWithResult("dumpsys package ${operation.packageName}")
-                    success = cmdResult.isSuccess
-                    result = if (success) cmdResult.output else "Failed to get app info"
+                    val cmdResult = shizukuUtils?.executeShellCommandWithResult("dumpsys package ${operation.packageName}")
+                    success = cmdResult?.isSuccess ?: false
+                    result = if (success) cmdResult?.output ?: "" else "Failed to get app info"
                 }
                 SystemOperation.Type.SET_SYSTEM_PROPERTY -> {
                     val cmdResult = shizukuUtils.executeShellCommandWithResult("setprop ${operation.property} ${operation.value}")
