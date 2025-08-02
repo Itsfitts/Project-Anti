@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     private var shizukuManagerService: ShizukuManagerService? = null
     private var isShizukuServiceBound = false
     private var showAutomationDialog by mutableStateOf(false)
-    private lateinit var featureHandler: FeatureHandler
+    private var featureHandler: FeatureHandler? = null
 
     // Add missing componentName property
     private val componentName by lazy {
