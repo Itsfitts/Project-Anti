@@ -37,7 +37,7 @@ class RemoteAdbService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
     private var serverSocket: ServerSocket? = null
     private val connectedClients = ConcurrentHashMap<String, Socket>()
-    private lateinit var connectionCode: String
+    private var connectionCode: String = ""
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
