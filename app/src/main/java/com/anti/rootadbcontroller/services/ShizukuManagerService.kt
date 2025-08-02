@@ -34,8 +34,8 @@ class ShizukuManagerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "ShizukuManagerService destroyed")
-        shizukuUtils.cleanup()
-        executor.shutdown()
+        shizukuUtils?.cleanup()
+        executor?.shutdown()
     }
 
     override fun onBind(intent: Intent): IBinder = binder
