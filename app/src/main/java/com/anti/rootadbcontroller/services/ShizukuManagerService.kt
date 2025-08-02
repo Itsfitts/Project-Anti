@@ -210,7 +210,7 @@ class ShizukuManagerService : Service() {
      * File operations via Shizuku
      */
     fun performFileOperation(filePath: String, operation: String, callback: FileOperationCallback?) {
-        executor.execute {
+        executor?.execute {
             val command = when (operation.lowercase()) {
                 "read" -> "cat $filePath"
                 "delete" -> "rm $filePath"
