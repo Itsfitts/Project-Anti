@@ -176,8 +176,8 @@ class ShizukuManagerService : Service() {
     fun getSystemInfo(callback: SystemOperationCallback?) {
         executor?.execute {
             val info = StringBuilder()
-            var result = shizukuUtils.executeShellCommandWithResult("getprop ro.build.version.release")
-            if (result.isSuccess) {
+            var result = shizukuUtils?.executeShellCommandWithResult("getprop ro.build.version.release")
+            if (result?.isSuccess == true) {
                 info.append("Android Version: ").append(result.output.trim()).append("\n")
             }
             result = shizukuUtils.executeShellCommandWithResult("getprop ro.product.model")
