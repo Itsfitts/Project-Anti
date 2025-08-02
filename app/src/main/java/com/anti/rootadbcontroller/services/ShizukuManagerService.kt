@@ -57,8 +57,8 @@ class ShizukuManagerService : Service() {
      * Execute shell command asynchronously
      */
     fun executeCommandAsync(command: String, callback: CommandCallback?) {
-        executor.execute {
-            val result = shizukuUtils.executeShellCommandWithResult(command)
+        executor?.execute {
+            val result = shizukuUtils?.executeShellCommandWithResult(command)
             callback?.onResult(result)
         }
     }
