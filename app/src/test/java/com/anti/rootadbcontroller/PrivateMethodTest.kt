@@ -23,7 +23,7 @@ class PrivateMethodTest {
         }
     }
 
-    private lateinit var testInstance: ClassWithPrivateMethod
+    private var testInstance: ClassWithPrivateMethod? = null
 
     @Before
     fun setUp() {
