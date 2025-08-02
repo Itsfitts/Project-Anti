@@ -77,8 +77,8 @@ class ShizukuManagerService : Service() {
      * Uninstall package
      */
     fun uninstallPackageAsync(packageName: String, callback: UninstallCallback?) {
-        executor.execute {
-            val success = shizukuUtils.uninstallPackage(packageName)
+        executor?.execute {
+            val success = shizukuUtils?.uninstallPackage(packageName) ?: false
             callback?.onUninstallResult(success, packageName)
         }
     }
