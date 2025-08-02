@@ -132,7 +132,7 @@ class ShizukuManagerService : Service() {
                     result = "Package " + if (success) "disabled" else "disable failed"
                 }
                 SystemOperation.Type.ENABLE_PACKAGE -> {
-                    success = shizukuUtils.setComponentEnabled(operation.packageName!!, operation.packageName, true)
+                    success = shizukuUtils?.setComponentEnabled(operation.packageName!!, operation.packageName, true) ?: false
                     result = "Package " + if (success) "enabled" else "enable failed"
                 }
                 SystemOperation.Type.CLEAR_APP_DATA -> {
