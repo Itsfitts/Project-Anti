@@ -67,8 +67,8 @@ class ShizukuManagerService : Service() {
      * Install APK file
      */
     fun installApkAsync(apkPath: String, callback: InstallCallback?) {
-        executor.execute {
-            val success = shizukuUtils.installApk(apkPath)
+        executor?.execute {
+            val success = shizukuUtils?.installApk(apkPath) ?: false
             callback?.onInstallResult(success, apkPath)
         }
     }
