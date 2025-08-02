@@ -18,7 +18,7 @@ import com.anti.rootadbcontroller.R
  * permission to function correctly.
  */
 class OverlayService : Service() {
-    private lateinit var windowManager: WindowManager
+    private var windowManager: WindowManager? = null
     private var overlayView: View? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
