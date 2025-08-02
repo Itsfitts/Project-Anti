@@ -27,7 +27,7 @@ class AntiDetectionUtilsInstrumentedTest {
     fun testIsEmulator() {
         // When running on an emulator, this should return true
         // When running on a real device, this should return false
-        val result = AntiDetectionUtils.isEmulator(context)
+        val result = context?.let { AntiDetectionUtils.isEmulator(it) } ?: false
 
         // Log the result for debugging
         println("[DEBUG_LOG] isEmulator result: $result")
