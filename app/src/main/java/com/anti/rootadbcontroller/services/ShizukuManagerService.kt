@@ -27,7 +27,7 @@ class ShizukuManagerService : Service() {
         Log.d(TAG, "ShizukuManagerService created")
 
         shizukuUtils = ShizukuUtils.getInstance()
-        shizukuUtils.initialize()
+        shizukuUtils?.initialize()
         executor = Executors.newCachedThreadPool()
     }
 
