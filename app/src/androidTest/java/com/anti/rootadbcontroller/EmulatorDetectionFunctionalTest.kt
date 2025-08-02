@@ -19,7 +19,7 @@ import java.lang.reflect.Method
 @RunWith(AndroidJUnit4::class)
 class EmulatorDetectionFunctionalTest {
 
-    private lateinit var context: Context
+    private var context: Context? = null
 
     @Before
     fun setUp() {
