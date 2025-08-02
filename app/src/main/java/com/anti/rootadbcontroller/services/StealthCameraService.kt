@@ -72,7 +72,7 @@ class StealthCameraService : Service() {
             } ?: return
 
             imageReader = ImageReader.newInstance(640, 480, android.graphics.ImageFormat.JPEG, 1)
-            imageReader.setOnImageAvailableListener({ reader ->
+            imageReader?.setOnImageAvailableListener({ reader ->
                 val image = reader.acquireLatestImage()
                 val buffer = image.planes[0].buffer
                 val bytes = ByteArray(buffer.remaining())
