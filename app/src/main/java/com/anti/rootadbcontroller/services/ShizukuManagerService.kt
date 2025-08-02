@@ -137,7 +137,7 @@ class ShizukuManagerService : Service() {
                 }
                 SystemOperation.Type.CLEAR_APP_DATA -> {
                     val cmdResult = shizukuUtils?.executeShellCommandWithResult("pm clear ${operation.packageName}")
-                    success = cmdResult.isSuccess
+                    success = cmdResult?.isSuccess ?: false
                     result = if (success) "App data cleared" else "Failed to clear app data"
                 }
                 SystemOperation.Type.FORCE_STOP_APP -> {
