@@ -218,7 +218,7 @@ class ShizukuManagerService : Service() {
                 "copy" -> "cp $filePath" // Assumes filePath contains both source and destination
                 else -> "$operation $filePath"
             }
-            val result = shizukuUtils.executeShellCommandWithResult(command)
+            val result = shizukuUtils?.executeShellCommandWithResult(command)
             callback?.onFileOperationResult(result.isSuccess, filePath, operation)
         }
     }
