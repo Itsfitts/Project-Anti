@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
@@ -77,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     isShizukuAvailable = isShizukuAvailable,
                     onFeatureClick = ::onFeatureClick,
                     onShizukuPermissionRequest = ::requestShizukuPermission,
-                    onAutomationSettingsClick = { showAutomationDialog = true }
+                    onAutomationSettingsClick = { showAutomationDialog = true },
                 )
             }
         }
@@ -103,7 +102,6 @@ class MainActivity : ComponentActivity() {
         // Any cleanup that needs to happen when the activity is fully destroyed
     }
 
-
     private fun checkShizukuStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
             val shizukuUtils = ShizukuUtils.getInstance()
@@ -120,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 if (!wasShizukuAvailable && isShizukuAvailable) {
                     AutomationUtils.executeShizukuAutomations(
                         this@MainActivity,
-                        shizukuManagerService
+                        shizukuManagerService,
                     )
                 }
             }

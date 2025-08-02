@@ -49,4 +49,3 @@ class AntiDetectionUtilsInstrumentedTest {
         // It's primarily for logging and verification purposes
     }
 }
-

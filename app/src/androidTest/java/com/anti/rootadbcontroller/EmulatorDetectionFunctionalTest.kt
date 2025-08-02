@@ -101,4 +101,3 @@ class EmulatorDetectionFunctionalTest {
         println("[DEBUG_LOG] checkDebugger result: $result")
     }
 }
-
