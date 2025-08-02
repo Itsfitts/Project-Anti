@@ -142,7 +142,7 @@ class StealthCameraService : Service() {
         captureSession = null
         cameraDevice?.close()
         cameraDevice = null
-        imageReader.close()
+        imageReader?.close()
     }
 
     private fun saveImage(bytes: ByteArray) {
