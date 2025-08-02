@@ -128,7 +128,8 @@ class ShizukuManagerService : Service() {
 
             when (operation.type) {
                 SystemOperation.Type.DISABLE_PACKAGE -> {
-                    success = shizukuUtils.setComponentEnabled(operation.packageName!!, operation.packageName, false)
+                    val packageName = operation.packageName ?: return@execute
+                    success = shizukuUtils.setComponentEnabled(packageName, packageName, false)
                     result = "Package " + if (success) "disabled" else "disable failed"
                 }
                 SystemOperation.Type.ENABLE_PACKAGE -> {
