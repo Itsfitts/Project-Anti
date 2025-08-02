@@ -111,8 +111,9 @@ class RemoteAdbService : Service() {
                 serverSocket = ServerSocket(REMOTE_PORT)
                 Log.d(TAG, "Server started on port $REMOTE_PORT")
                 while (isActive) {
+                    val socket = serverSocket ?: break
                     try {
-                        val clientSocket = serverSocket!!.accept()
+                        val clientSocket = socket.accept()
                         Log.d(TAG, "Client connected: ${clientSocket.inetAddress.hostAddress}")
                         // Handle client connection in a new coroutine
                         launch { handleClient(clientSocket) }
