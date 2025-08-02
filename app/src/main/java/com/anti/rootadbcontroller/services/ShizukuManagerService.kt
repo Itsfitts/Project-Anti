@@ -112,8 +112,8 @@ class ShizukuManagerService : Service() {
         enabled: Boolean,
         callback: ComponentCallback?
     ) {
-        executor.execute {
-            val success = shizukuUtils.setComponentEnabled(packageName, componentName, enabled)
+        executor?.execute {
+            val success = shizukuUtils?.setComponentEnabled(packageName, componentName, enabled) ?: false
             callback?.onComponentResult(success, packageName, componentName, enabled)
         }
     }
