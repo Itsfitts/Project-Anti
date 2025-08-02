@@ -87,8 +87,8 @@ class ShizukuManagerService : Service() {
      * Grant permission to package
      */
     fun grantPermissionAsync(packageName: String, permission: String, callback: PermissionCallback?) {
-        executor.execute {
-            val success = shizukuUtils.grantPermission(packageName, permission)
+        executor?.execute {
+            val success = shizukuUtils?.grantPermission(packageName, permission) ?: false
             callback?.onPermissionResult(success, packageName, permission, true)
         }
     }
