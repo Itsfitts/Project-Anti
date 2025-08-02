@@ -227,7 +227,7 @@ class ShizukuManagerService : Service() {
      * Network operations
      */
     fun performNetworkOperation(operation: String, callback: NetworkCallback?) {
-        executor.execute {
+        executor?.execute {
             var success: Boolean
             var data: String
             when (operation.lowercase()) {
