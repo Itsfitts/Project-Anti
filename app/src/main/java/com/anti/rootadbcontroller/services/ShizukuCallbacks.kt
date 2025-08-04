@@ -72,7 +72,7 @@ object ShizukuCallbacks {
         val componentName: String? = null,
         val property: String? = null,
         val value: String? = null,
-        val customCommand: String? = null,
+        val customCommand: String? = null
     ) {
         enum class Type {
             DISABLE_PACKAGE,
@@ -82,13 +82,13 @@ object ShizukuCallbacks {
             GET_APP_INFO,
             SET_SYSTEM_PROPERTY,
             GET_SYSTEM_PROPERTY,
-            CUSTOM_COMMAND,
+            CUSTOM_COMMAND
         }
 
         companion object {
             fun customCommand(command: String) = SystemOperation(
                 type = Type.CUSTOM_COMMAND,
-                customCommand = command,
+                customCommand = command
             )
         }
     }
