@@ -114,7 +114,7 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.10.1'
     implementation 'androidx.compose.runtime:runtime-livedata'
     implementation 'androidx.compose.runtime:runtime-rxjava2'
-    implementation 'androidx.navigation:navigation-compose:2.9.2'
+    implementation 'androidx.navigation:navigation-compose:2.9.3'
 
     // Shizuku Integration
     implementation 'dev.rikka.shizuku:api:13.1.5'
